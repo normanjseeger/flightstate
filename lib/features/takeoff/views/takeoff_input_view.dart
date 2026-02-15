@@ -27,6 +27,8 @@ class TakeoffInputView extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           children: [
             _buildResultsCard(vm),
+            const SizedBox(height: 8),
+            _buildSurfaceDropdown(vm),
             const SizedBox(height: 16),
             _buildSlider(
               label: 'Outside Air Temperature',
@@ -82,8 +84,6 @@ class TakeoffInputView extends StatelessWidget {
               decimals: 0,
               onChanged: vm.setObstacleHeight,
             ),
-            const SizedBox(height: 8),
-            _buildSurfaceDropdown(vm),
             if (vm.validationError != null)
               Padding(
                 padding: const EdgeInsets.only(top: 12),
