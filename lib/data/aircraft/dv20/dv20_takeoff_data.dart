@@ -11,9 +11,41 @@
 //   Panel 4: Corrected distance → total distance over obstacle
 
 import 'package:flightstate/core/math/interpolation.dart';
+import 'package:flightstate/data/aircraft/aircraft_performance_data.dart';
+import 'package:flightstate/domain/models/surface_type.dart';
 
-class Dv20TakeoffData {
-  Dv20TakeoffData._();
+class Dv20TakeoffData extends AircraftPerformanceData {
+  const Dv20TakeoffData();
+
+  // ── Input ranges ──
+
+  @override
+  String get name => 'Diamond DV-20 Katana';
+
+  @override
+  double get oatMinC => -20;
+  @override
+  double get oatMaxC => 40;
+  @override
+  double get altMinFt => 0;
+  @override
+  double get altMaxFt => 8000;
+  @override
+  double get massMinKg => 600;
+  @override
+  double get massMaxKg => 730;
+  @override
+  double get windMinKts => -10;
+  @override
+  double get windMaxKts => 20;
+  @override
+  double get obstMinM => 0;
+  @override
+  double get obstMaxM => 15;
+
+  @override
+  List<SurfaceType> get supportedSurfaces =>
+      [SurfaceType.paved, SurfaceType.dryShortGrass, SurfaceType.softGrass];
 
   // ──────────────────────────────────────────────────────
   // Panel 1: OAT × Pressure Altitude → Ground Roll (m)
@@ -23,9 +55,9 @@ class Dv20TakeoffData {
   // Columns = pressure altitude breakpoints (ft)
   // Values = ground roll distance in meters at 730 kg (max weight)
 
-  static const List<double> temperatures = [-20, -10, 0, 10, 20, 30, 40];
+  static const List<double> _temperatures = [-20, -10, 0, 10, 20, 30, 40];
 
-  static const List<double> pressureAltitudes = [
+  static const List<double> _pressureAltitudes = [
     0, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000,
   ];
 
@@ -36,7 +68,7 @@ class Dv20TakeoffData {
   /// Anchor: 3000ft/15°C → 492m at 730 kg (produces 330m at 675 kg, 10 kts HW).
   /// Model: base=326m at 0°C/SL, ×1.08 per 1000ft, ×1.012 per °C.
   /// Each row is a temperature, each column is a pressure altitude.
-  static const List<List<double>> groundRoll = [
+  static const List<List<double>> _groundRoll = [
     // -20°C:  0ft   1000  2000  3000  4000  5000  6000  7000  8000
     [257, 277, 300, 323, 349, 377, 407, 440, 475],
     // -10°C
@@ -56,19 +88,10 @@ class Dv20TakeoffData {
   // ──────────────────────────────────────────────────────
   // Panel 2: Mass correction
   // ──────────────────────────────────────────────────────
-  //
-  // The chart shows lines from mass axis that deflect the
-  // reference line. At 730 kg (max), factor = 1.0.
-  // At lower masses the roll distance decreases.
-  //
-  // The ground roll tables above are at 730 kg. We apply a
-  // correction factor based on mass.
 
-  static const List<double> masses = [600, 625, 650, 675, 700, 730];
+  static const List<double> _masses = [600, 625, 650, 675, 700, 730];
 
-  /// Mass correction factor (multiplier on ground roll).
-  /// At 730 kg = 1.0 (reference). Lower mass = shorter roll.
-  static const List<double> massFactors = [
+  static const List<double> _massFactors = [
     0.68, // 600 kg
     0.74, // 625 kg
     0.80, // 650 kg
@@ -80,16 +103,10 @@ class Dv20TakeoffData {
   // ──────────────────────────────────────────────────────
   // Panel 3: Headwind/tailwind correction
   // ──────────────────────────────────────────────────────
-  //
-  // Positive = headwind (reduces distance)
-  // Negative = tailwind (increases distance)
-  // Dashed lines in chart = tailwind
 
-  static const List<double> winds = [-10, -5, 0, 5, 10, 15, 20];
+  static const List<double> _winds = [-10, -5, 0, 5, 10, 15, 20];
 
-  /// Wind correction factor (multiplier on ground roll).
-  /// At 0 kts = 1.0. Headwind reduces, tailwind increases.
-  static const List<double> windFactors = [
+  static const List<double> _windFactors = [
     1.30, // 10 kts tailwind
     1.15, //  5 kts tailwind
     1.00, //  0 kts
@@ -102,16 +119,10 @@ class Dv20TakeoffData {
   // ──────────────────────────────────────────────────────
   // Panel 4: Obstacle clearance
   // ──────────────────────────────────────────────────────
-  //
-  // Converts ground roll to total distance over obstacle.
-  // The ratio depends on obstacle height.
-  // At 0 m obstacle, total = ground roll.
-  // At 15 m (50 ft) obstacle, total ≈ 1.42× ground roll.
 
-  static const List<double> obstacleHeights = [0, 5, 10, 15];
+  static const List<double> _obstacleHeights = [0, 5, 10, 15];
 
-  /// Obstacle clearance factor (multiplier on corrected ground roll).
-  static const List<double> obstacleFactors = [
+  static const List<double> _obstacleFactors = [
     1.00, //  0 m — ground roll only
     1.15, //  5 m
     1.30, // 10 m
@@ -122,29 +133,29 @@ class Dv20TakeoffData {
   // Lookup methods
   // ──────────────────────────────────────────────────────
 
-  /// Panel 1: Get base ground roll at max weight for given OAT and altitude.
-  static double getBaseGroundRoll(double oatC, double altFt) {
+  @override
+  double getBaseGroundRoll(double oatC, double altFt) {
     return bilinearInterpolate(
       oatC,
       altFt,
-      temperatures,
-      pressureAltitudes,
-      groundRoll,
+      _temperatures,
+      _pressureAltitudes,
+      _groundRoll,
     );
   }
 
-  /// Panel 2: Get mass correction factor.
-  static double getMassFactor(double massKg) {
-    return linearInterpolate(massKg, masses, massFactors);
+  @override
+  double getMassFactor(double massKg) {
+    return linearInterpolate(massKg, _masses, _massFactors);
   }
 
-  /// Panel 3: Get wind correction factor.
-  static double getWindFactor(double headwindKts) {
-    return linearInterpolate(headwindKts, winds, windFactors);
+  @override
+  double getWindFactor(double headwindKts) {
+    return linearInterpolate(headwindKts, _winds, _windFactors);
   }
 
-  /// Panel 4: Get obstacle clearance factor.
-  static double getObstacleFactor(double obstacleM) {
-    return linearInterpolate(obstacleM, obstacleHeights, obstacleFactors);
+  @override
+  double getObstacleFactor(double obstacleM) {
+    return linearInterpolate(obstacleM, _obstacleHeights, _obstacleFactors);
   }
 }

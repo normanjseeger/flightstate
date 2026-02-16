@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flightstate/core/models/aircraft_type.dart';
+import 'package:flightstate/data/aircraft/aircraft_registry.dart';
 import 'package:flightstate/domain/models/surface_type.dart';
 import 'package:flightstate/features/takeoff/viewmodels/takeoff_viewmodel.dart';
 
@@ -26,6 +28,8 @@ class TakeoffInputView extends StatelessWidget {
         builder: (context, vm, _) => ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            _buildAircraftDropdown(vm),
+            const SizedBox(height: 8),
             _buildResultsCard(vm),
             const SizedBox(height: 8),
             _buildSurfaceDropdown(vm),
@@ -35,7 +39,7 @@ class TakeoffInputView extends StatelessWidget {
               value: vm.oat,
               min: vm.oatMin,
               max: vm.oatMax,
-              divisions: 60,
+              divisions: ((vm.oatMax - vm.oatMin) * 1).round(),
               unit: vm.tempUnit,
               displayValue: vm.displayOat,
               onChanged: vm.setOat,
@@ -45,7 +49,7 @@ class TakeoffInputView extends StatelessWidget {
               value: vm.pressureAltitude,
               min: vm.altMin,
               max: vm.altMax,
-              divisions: 80,
+              divisions: ((vm.altMax - vm.altMin) / 100).round(),
               unit: vm.altUnit,
               displayValue: vm.pressureAltitude,
               decimals: 0,
@@ -56,7 +60,7 @@ class TakeoffInputView extends StatelessWidget {
               value: vm.mass,
               min: vm.massMin,
               max: vm.massMax,
-              divisions: 130,
+              divisions: ((vm.massMax - vm.massMin) / 1).round(),
               unit: vm.massUnit,
               displayValue: vm.displayMass,
               decimals: 0,
@@ -67,23 +71,24 @@ class TakeoffInputView extends StatelessWidget {
               value: vm.headwind,
               min: vm.windMin,
               max: vm.windMax,
-              divisions: 30,
+              divisions: ((vm.windMax - vm.windMin) * 1).round(),
               unit: vm.windUnit,
               displayValue: vm.headwind,
               subtitle: 'Negative = tailwind',
               onChanged: vm.setHeadwind,
             ),
-            _buildSlider(
-              label: 'Obstacle Height',
-              value: vm.obstacleHeight,
-              min: vm.obstMin,
-              max: vm.obstMax,
-              divisions: 15,
-              unit: vm.obstUnit,
-              displayValue: vm.displayObstacleHeight,
-              decimals: 0,
-              onChanged: vm.setObstacleHeight,
-            ),
+            if (vm.showObstacleSlider)
+              _buildSlider(
+                label: 'Obstacle Height',
+                value: vm.obstacleHeight,
+                min: vm.obstMin,
+                max: vm.obstMax,
+                divisions: (vm.obstMax - vm.obstMin).round().clamp(1, 100),
+                unit: vm.obstUnit,
+                displayValue: vm.displayObstacleHeight,
+                decimals: 0,
+                onChanged: vm.setObstacleHeight,
+              ),
             if (vm.validationError != null)
               Padding(
                 padding: const EdgeInsets.only(top: 12),
@@ -98,6 +103,29 @@ class TakeoffInputView extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildAircraftDropdown(TakeoffViewModel vm) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        const Text(
+          'Aircraft',
+          style: TextStyle(fontWeight: FontWeight.w500),
+        ),
+        DropdownButton<AircraftType>(
+          value: vm.aircraftType,
+          onChanged: (v) {
+            if (v != null) vm.setAircraftType(v);
+          },
+          items: AircraftRegistry.supportedAircraft
+              .map(
+                (a) => DropdownMenuItem(value: a, child: Text(a.label)),
+              )
+              .toList(),
+        ),
+      ],
     );
   }
 
@@ -228,7 +256,7 @@ class TakeoffInputView extends StatelessWidget {
           onChanged: (v) {
             if (v != null) vm.setSurfaceType(v);
           },
-          items: SurfaceType.values
+          items: vm.supportedSurfaces
               .map((s) => DropdownMenuItem(value: s, child: Text(s.label)))
               .toList(),
         ),

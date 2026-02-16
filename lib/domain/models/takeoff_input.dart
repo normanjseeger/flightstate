@@ -1,3 +1,5 @@
+import 'package:flightstate/data/aircraft/aircraft_performance_data.dart';
+
 import 'surface_type.dart';
 
 class TakeoffInput {
@@ -28,18 +30,22 @@ class TakeoffInput {
     this.surfaceType = SurfaceType.paved,
   });
 
-  /// Validates all inputs are within chart range.
-  String? validate() {
-    if (oat < -20 || oat > 40) return 'OAT must be between -20°C and 40°C';
-    if (pressureAltitude < 0 || pressureAltitude > 8000) {
-      return 'Pressure altitude must be between 0 and 8000 ft';
+  /// Validates all inputs are within the aircraft's chart range.
+  String? validate(AircraftPerformanceData data) {
+    if (oat < data.oatMinC || oat > data.oatMaxC) {
+      return 'OAT must be between ${data.oatMinC.round()}°C and ${data.oatMaxC.round()}°C';
     }
-    if (mass < 600 || mass > 730) return 'Mass must be between 600 and 730 kg';
-    if (headwind < -10 || headwind > 20) {
-      return 'Wind must be between -10 (tailwind) and 20 kts (headwind)';
+    if (pressureAltitude < data.altMinFt || pressureAltitude > data.altMaxFt) {
+      return 'Pressure altitude must be between ${data.altMinFt.round()} and ${data.altMaxFt.round()} ft';
     }
-    if (obstacleHeight < 0 || obstacleHeight > 15) {
-      return 'Obstacle height must be between 0 and 15 m';
+    if (mass < data.massMinKg || mass > data.massMaxKg) {
+      return 'Mass must be between ${data.massMinKg.round()} and ${data.massMaxKg.round()} kg';
+    }
+    if (headwind < data.windMinKts || headwind > data.windMaxKts) {
+      return 'Wind must be between ${data.windMinKts.round()} (tailwind) and ${data.windMaxKts.round()} kts (headwind)';
+    }
+    if (obstacleHeight < data.obstMinM || obstacleHeight > data.obstMaxM) {
+      return 'Obstacle height must be between ${data.obstMinM.round()} and ${data.obstMaxM.round()} m';
     }
     return null;
   }
