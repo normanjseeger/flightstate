@@ -266,4 +266,47 @@ class C172pTakeoffData extends AircraftPerformanceData {
       [gr2000, gr2200, gr2400],
     );
   }
+
+  // ──────────────────────────────────────────────────────
+  // LANDING PERFORMANCE DATA
+  // Based on C172P POH
+  // ──────────────────────────────────────────────────────
+
+  @override
+  double getBaseLandingGroundRoll(double oatC, double altFt) {
+    // Landing ground roll is roughly 54% of takeoff at similar conditions
+    // Formula: ground roll decreases ~10% per 1000ft, ~1% per °C
+    double base = 168; // meters at SL, 15°C, max weight
+    double altFactor = 1.0 - ((altFt / 1000) * 0.10);
+    double tempFactor = 1.0 + ((oatC - 15) * 0.01);
+    return base * altFactor * tempFactor;
+  }
+
+  @override
+  double getLandingMassFactor(double massKg) {
+    double massLbs = massKg * 2.20462;
+    // Landing distance proportional to weight
+    // At 2000 lbs: 0.75, at 2400 lbs: 1.0
+    return 0.65 + ((massLbs - 1650) / 750) * 0.35;
+  }
+
+  @override
+  double getLandingWindFactor(double headwindKts) {
+    // Same wind factors as takeoff (but inverted effect)
+    if (headwindKts < 0) {
+      // Tailwind: significantly increases distance
+      return 1.0 + (headwindKts.abs() * 0.05);
+    } else {
+      // Headwind: decreases distance
+      return 1.0 - (headwindKts * 0.04);
+    }
+  }
+
+  @override
+  double getLandingObstacleFactor(double obstacleM) {
+    // Landing over obstacle factor
+    if (obstacleM <= 0) return 1.0;
+    // Typical: 15m (50ft) obstacle = 1.5x ground roll
+    return 1.0 + (obstacleM / 30);
+  }
 }

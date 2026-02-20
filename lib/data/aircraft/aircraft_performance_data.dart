@@ -26,7 +26,7 @@ abstract class AircraftPerformanceData {
   /// Surface types supported by this aircraft's POH data.
   List<SurfaceType> get supportedSurfaces;
 
-  // ── Performance lookups ──
+  // ── Takeoff Performance ──
 
   /// Base ground roll (m) at max weight, paved, no wind, no obstacle.
   double getBaseGroundRoll(double oatC, double altFt);
@@ -40,4 +40,18 @@ abstract class AircraftPerformanceData {
   /// Obstacle clearance factor (multiplier on ground roll → total distance).
   /// 1.0 means ground roll only. >1.0 includes climb over obstacle.
   double getObstacleFactor(double obstacleM);
+
+  // ── Landing Performance ──
+
+  /// Base landing ground roll (m) at max weight, paved, no wind.
+  double getBaseLandingGroundRoll(double oatC, double altFt);
+
+  /// Landing mass correction factor.
+  double getLandingMassFactor(double massKg);
+
+  /// Landing wind correction factor.
+  double getLandingWindFactor(double headwindKts);
+
+  /// Landing obstacle factor.
+  double getLandingObstacleFactor(double obstacleM);
 }

@@ -158,4 +158,89 @@ class Dv20TakeoffData extends AircraftPerformanceData {
   double getObstacleFactor(double obstacleM) {
     return linearInterpolate(obstacleM, _obstacleHeights, _obstacleFactors);
   }
+
+  // ──────────────────────────────────────────────────────
+  // LANDING PERFORMANCE DATA
+  // Based on POH Figure 5.8 "Landing Distance"
+  // ──────────────────────────────────────────────────────
+
+  /// Landing ground roll (m) at max weight (730 kg), paved, no wind.
+  /// Approximate values derived from POH (typically ~54% of takeoff)
+  static const List<List<double>> _landingGroundRoll = [
+    // -20°C:  0ft   1000  2000  3000  4000  5000  6000  7000  8000
+    [139, 150, 162, 175, 189, 204, 220, 237, 256],
+    // -10°C
+    [156, 168, 182, 196, 212, 229, 247, 267, 288],
+    // 0°C
+    [176, 190, 205, 221, 239, 258, 278, 300, 324],
+    // 10°C
+    [199, 215, 232, 250, 270, 292, 315, 340, 367],
+    // 20°C
+    [224, 242, 261, 281, 304, 328, 354, 382, 413],
+    // 30°C
+    [252, 272, 293, 316, 341, 369, 398, 429, 464],
+    // 40°C
+    [284, 306, 330, 356, 384, 415, 448, 483, 522],
+  ];
+
+  // Landing mass factors (lighter = shorter distance)
+  static const List<double> _landingMasses = [600, 625, 650, 675, 700, 730];
+  static const List<double> _landingMassFactors = [
+    0.62, // 600 kg
+    0.68, // 625 kg
+    0.74, // 650 kg
+    0.80, // 675 kg
+    0.90, // 700 kg
+    1.00, // 730 kg
+  ];
+
+  // Landing wind factors
+  static const List<double> _landingWindFactors = [
+    1.35, // -10 kts tailwind
+    1.18, // -5 kts tailwind
+    1.00, // 0 kts
+    0.85, // 5 kts headwind
+    0.73, // 10 kts headwind
+    0.63, // 15 kts headwind
+    0.55, // 20 kts headwind
+  ];
+
+  // Landing obstacle heights (0m = ground roll, 15m = 50ft)
+  static const List<double> _landingObstacleHeights = [0, 5, 10, 15];
+  static const List<double> _landingObstacleFactors = [
+    1.00, // 0 m
+    1.18, // 5 m
+    1.35, // 10 m
+    1.50, // 15 m (50 ft)
+  ];
+
+  // ──────────────────────────────────────────────────────
+  // Landing lookup methods
+  // ──────────────────────────────────────────────────────
+
+  @override
+  double getBaseLandingGroundRoll(double oatC, double altFt) {
+    return bilinearInterpolate(
+      oatC,
+      altFt,
+      _temperatures,
+      _pressureAltitudes,
+      _landingGroundRoll,
+    );
+  }
+
+  @override
+  double getLandingMassFactor(double massKg) {
+    return linearInterpolate(massKg, _landingMasses, _landingMassFactors);
+  }
+
+  @override
+  double getLandingWindFactor(double headwindKts) {
+    return linearInterpolate(headwindKts, _winds, _landingWindFactors);
+  }
+
+  @override
+  double getLandingObstacleFactor(double obstacleM) {
+    return linearInterpolate(obstacleM, _landingObstacleHeights, _landingObstacleFactors);
+  }
 }
