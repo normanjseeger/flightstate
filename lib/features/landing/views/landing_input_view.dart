@@ -7,7 +7,7 @@ import 'package:flightstate/features/landing/viewmodels/landing_viewmodel.dart';
 class LandingInputView extends StatelessWidget {
   const LandingInputView({super.key});
 
-  static const String _appIconPath = 'assets/images/flightStateIconCropped.png';
+  static const String _appIconPath = 'assets/images/flightStateIcon.png';
 
   @override
   Widget build(BuildContext context) {

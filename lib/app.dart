@@ -15,7 +15,7 @@ class FlightStateApp extends StatefulWidget {
 class _FlightStateAppState extends State<FlightStateApp> {
   int _selectedIndex = 0;
 
-  static const String _appIconPath = 'assets/images/flightStateIconCropped.png';
+  static const String _appIconPath = 'assets/images/flightStateIcon.png';
 
   final List<Widget> _screens = [
     ChangeNotifierProvider(

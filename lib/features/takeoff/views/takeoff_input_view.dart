@@ -9,7 +9,7 @@ class TakeoffInputView extends StatelessWidget {
   const TakeoffInputView({super.key});
 
   // App icon asset
-  static const String _appIconPath = 'assets/images/flightStateIconCropped.png';
+  static const String _appIconPath = 'assets/images/flightStateIcon.png';
 
   @override
   Widget build(BuildContext context) {
