@@ -385,7 +385,7 @@ class LandingInputView extends StatelessWidget {
 
             _buildSlider(
               context,
-              icon: Icons.height,
+              icon: Icons.speed,
               label: 'Pressure Altitude',
               value: vm.pressureAltitude,
               min: vm.altMin,
