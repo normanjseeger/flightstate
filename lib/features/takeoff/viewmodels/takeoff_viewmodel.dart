@@ -10,7 +10,7 @@ import 'package:flightstate/core/math/unit_conversion.dart';
 
 class TakeoffViewModel extends ChangeNotifier {
   // Aircraft selection
-  AircraftType _aircraftType = AircraftType.dv20;
+  AircraftType _aircraftType = AircraftType.c172p;
   AircraftPerformanceData _aircraftData =
       AircraftRegistry.getPerformanceData(AircraftType.dv20);
 

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:flightstate/core/models/aircraft_type.dart';
 import 'package:flightstate/data/aircraft/aircraft_registry.dart';
 import 'package:flightstate/features/landing/viewmodels/landing_viewmodel.dart';
+import 'package:flightstate/features/settings/views/settings_view.dart';
 
 class LandingInputView extends StatelessWidget {
   const LandingInputView({super.key});
@@ -37,19 +38,16 @@ class LandingInputView extends StatelessWidget {
           ],
         ),
         actions: [
-          Consumer<LandingViewModel>(
-            builder: (_, vm, _) => TextButton.icon(
-              onPressed: vm.toggleUnits,
-              icon: Icon(
-                vm.useImperial ? Icons.straighten : Icons.straighten,
-                color: Colors.white70,
-                size: 18,
-              ),
-              label: Text(
-                vm.useImperial ? 'Imperial' : 'Metric',
-                style: const TextStyle(color: Colors.white70),
-              ),
-            ),
+          IconButton(
+            icon: const Icon(Icons.settings, color: Colors.white70),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const SettingsView(),
+                ),
+              );
+            },
+            tooltip: 'Settings',
           ),
         ],
       ),

@@ -4,6 +4,8 @@ import 'package:flightstate/features/takeoff/views/takeoff_input_view.dart';
 import 'package:flightstate/features/takeoff/viewmodels/takeoff_viewmodel.dart';
 import 'package:flightstate/features/landing/views/landing_input_view.dart';
 import 'package:flightstate/features/landing/viewmodels/landing_viewmodel.dart';
+import 'package:flightstate/features/settings/viewmodels/settings_viewmodel.dart';
+import 'package:flightstate/features/settings/views/settings_view.dart';
 
 class FlightStateApp extends StatefulWidget {
   const FlightStateApp({super.key});
@@ -17,49 +19,21 @@ class _FlightStateAppState extends State<FlightStateApp> {
 
   static const String _appIconPath = 'assets/images/flightStateIcon.png';
 
-  final List<Widget> _screens = [
-    ChangeNotifierProvider(
-      create: (_) => TakeoffViewModel(),
-      child: const TakeoffInputView(),
-    ),
-    ChangeNotifierProvider(
-      create: (_) => LandingViewModel(),
-      child: const LandingInputView(),
-    ),
-  ];
-
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'FlightState',
-      debugShowCheckedModeBanner: false,
-      theme: _buildLightTheme(),
-      darkTheme: _buildDarkTheme(),
-      themeMode: ThemeMode.system,
-      home: Scaffold(
-        body: _screens[_selectedIndex],
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: _selectedIndex,
-          onDestinationSelected: _onItemTapped,
-          destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.flight_takeoff),
-              selectedIcon: Icon(Icons.flight_takeoff, color: Colors.blue),
-              label: 'Takeoff',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.flight_land),
-              selectedIcon: Icon(Icons.flight_land, color: Colors.blue),
-              label: 'Landing',
-            ),
-          ],
-        ),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => SettingsViewModel()),
+        ChangeNotifierProvider(create: (_) => TakeoffViewModel()),
+        ChangeNotifierProvider(create: (_) => LandingViewModel()),
+      ],
+      child: MaterialApp(
+        title: 'FlightState',
+        debugShowCheckedModeBanner: false,
+        theme: _buildLightTheme(),
+        darkTheme: _buildDarkTheme(),
+        themeMode: ThemeMode.system,
+        home: _MainScreen(appIconPath: _appIconPath),
       ),
     );
   }
@@ -289,6 +263,61 @@ class _FlightStateAppState extends State<FlightStateApp> {
       iconTheme: const IconThemeData(
         color: _secondaryColor,
         size: 24,
+      ),
+    );
+  }
+}
+
+class _MainScreen extends StatefulWidget {
+  final String appIconPath;
+
+  const _MainScreen({required this.appIconPath});
+
+  @override
+  State<_MainScreen> createState() => _MainScreenState();
+}
+
+class _MainScreenState extends State<_MainScreen> {
+  int _selectedIndex = 0;
+
+  final List<Widget> _screens = const [
+    TakeoffInputView(),
+    LandingInputView(),
+  ];
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
+  void _openSettings() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const SettingsView(),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: _screens[_selectedIndex],
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _selectedIndex,
+        onDestinationSelected: _onItemTapped,
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.flight_takeoff),
+            selectedIcon: Icon(Icons.flight_takeoff, color: Colors.blue),
+            label: 'Takeoff',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.flight_land),
+            selectedIcon: Icon(Icons.flight_land, color: Colors.blue),
+            label: 'Landing',
+          ),
+        ],
       ),
     );
   }

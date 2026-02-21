@@ -4,6 +4,7 @@ import 'package:flightstate/core/models/aircraft_type.dart';
 import 'package:flightstate/data/aircraft/aircraft_registry.dart';
 import 'package:flightstate/domain/models/surface_type.dart';
 import 'package:flightstate/features/takeoff/viewmodels/takeoff_viewmodel.dart';
+import 'package:flightstate/features/settings/views/settings_view.dart';
 
 class TakeoffInputView extends StatelessWidget {
   const TakeoffInputView({super.key});
@@ -40,19 +41,16 @@ class TakeoffInputView extends StatelessWidget {
           ],
         ),
         actions: [
-          Consumer<TakeoffViewModel>(
-            builder: (_, vm, _) => TextButton.icon(
-              onPressed: vm.toggleUnits,
-              icon: Icon(
-                vm.useImperial ? Icons.straighten : Icons.straighten,
-                color: Colors.white70,
-                size: 18,
-              ),
-              label: Text(
-                vm.useImperial ? 'Imperial' : 'Metric',
-                style: const TextStyle(color: Colors.white70),
-              ),
-            ),
+          IconButton(
+            icon: const Icon(Icons.settings, color: Colors.white70),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const SettingsView(),
+                ),
+              );
+            },
+            tooltip: 'Settings',
           ),
         ],
       ),
@@ -549,6 +547,16 @@ class TakeoffInputView extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
+            
+            // POH-provided surfaces
+            Text(
+              'POH Data',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -560,6 +568,36 @@ class TakeoffInputView extends StatelessWidget {
                   onSelected: (_) => vm.setSurfaceType(surface),
                 );
               }).toList(),
+            ),
+            
+            const SizedBox(height: 16),
+            Divider(),
+            const SizedBox(height: 8),
+            
+            // Additional surfaces from settings
+            Text(
+              'Additional (from Settings)',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.secondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                ChoiceChip(
+                  label: const Text('Wet Paved'),
+                  selected: false,
+                  onSelected: (_) {},
+                ),
+                ChoiceChip(
+                  label: const Text('Wet Grass'),
+                  selected: false,
+                  onSelected: (_) {},
+                ),
+              ],
             ),
           ],
         ),

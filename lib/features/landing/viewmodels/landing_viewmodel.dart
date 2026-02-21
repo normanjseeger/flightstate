@@ -8,7 +8,7 @@ import 'package:flightstate/domain/performance/landing_calculator.dart';
 
 class LandingViewModel extends ChangeNotifier {
   // Aircraft
-  AircraftType _aircraftType = AircraftType.dv20;
+  AircraftType _aircraftType = AircraftType.c172p;
   AircraftPerformanceData? _aircraftData;
   
   // Inputs
