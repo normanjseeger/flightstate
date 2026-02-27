@@ -1,12 +1,28 @@
 // Linear and bilinear interpolation utilities with clamping.
 
+/// Snaps a value to the nearest breakpoint if within tolerance.
+/// Returns the snapped value or the original value if not close enough.
+double _snapToBreakpoint(double value, List<double> breakpoints, double tolerance) {
+  for (final bp in breakpoints) {
+    if ((value - bp).abs() <= tolerance) {
+      return bp;
+    }
+  }
+  return value;
+}
+
 /// Linearly interpolates a value [x] within [xs] → [ys].
 ///
 /// If [x] is outside the range of [xs], it is clamped to the nearest endpoint.
 /// [xs] must be sorted in ascending order and have the same length as [ys].
-double linearInterpolate(double x, List<double> xs, List<double> ys) {
+/// Snaps to exact breakpoints when very close to return exact table values.
+/// [tolerance] defaults to 0.1 for most values (temp, wind, obstacle height).
+double linearInterpolate(double x, List<double> xs, List<double> ys, {double tolerance = 0.1}) {
   assert(xs.length == ys.length);
   assert(xs.length >= 2);
+
+  // Snap to exact breakpoints if very close
+  x = _snapToBreakpoint(x, xs, tolerance);
 
   // Clamp to range
   if (x <= xs.first) return ys.first;
@@ -29,6 +45,9 @@ double linearInterpolate(double x, List<double> xs, List<double> ys) {
 /// [x] and [y] are the query coordinates.
 /// [xs] and [ys] are the grid breakpoints (sorted ascending).
 /// [values] is a 2D array where values[i][j] corresponds to xs[i], ys[j].
+///
+/// Snaps to exact breakpoints when within tolerance to avoid interpolation
+/// errors when values are very close to table values.
 double bilinearInterpolate(
   double x,
   double y,
@@ -38,6 +57,10 @@ double bilinearInterpolate(
 ) {
   assert(values.length == xs.length);
   assert(values.every((row) => row.length == ys.length));
+
+  // Snap to exact breakpoints if very close (within 0.1 for temp, 10 for altitude)
+  x = _snapToBreakpoint(x, xs, 0.1);
+  y = _snapToBreakpoint(y, ys, 10.0);
 
   // Clamp x and y
   x = x.clamp(xs.first, xs.last);

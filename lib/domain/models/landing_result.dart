@@ -3,29 +3,37 @@
 class LandingResult {
   final double groundRollM;
   final double totalDistanceM;
-  final double landingDistanceOver50ftM;
+
+  // Breakdown for transparency
+  final double baseGroundRollM;
+  final double massFactor;
+  final double windFactor;
+  final double surfaceFactor;
+  final double obstacleFactor;
+  final double safetyMargin;
 
   const LandingResult({
     required this.groundRollM,
     required this.totalDistanceM,
-    required this.landingDistanceOver50ftM,
+    this.baseGroundRollM = 0,
+    this.massFactor = 1.0,
+    this.windFactor = 1.0,
+    this.surfaceFactor = 1.0,
+    this.obstacleFactor = 1.0,
+    this.safetyMargin = 1.0,
   });
 
-  // Ground roll in selected unit
+  // Ground roll in selected unit (with safety margin applied)
   double groundRoll(String unit) {
-    if (unit == 'ft') return groundRollM * 3.28084;
-    return groundRollM;
+    final withSafety = groundRollM * safetyMargin;
+    if (unit == 'ft') return withSafety * 3.28084;
+    return withSafety;
   }
 
-  // Total distance over obstacle in selected unit
+  // Total distance over obstacle in selected unit (with safety margin applied)
   double totalDistance(String unit) {
-    if (unit == 'ft') return totalDistanceM * 3.28084;
-    return totalDistanceM;
-  }
-
-  // Landing distance over 50ft obstacle in selected unit
-  double landingDistanceOver50ft(String unit) {
-    if (unit == 'ft') return landingDistanceOver50ftM * 3.28084;
-    return landingDistanceOver50ftM;
+    final withSafety = totalDistanceM * safetyMargin;
+    if (unit == 'ft') return withSafety * 3.28084;
+    return withSafety;
   }
 }

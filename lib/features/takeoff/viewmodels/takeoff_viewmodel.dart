@@ -12,16 +12,15 @@ class TakeoffViewModel extends ChangeNotifier {
   // Aircraft selection
   AircraftType _aircraftType = AircraftType.c172p;
   AircraftPerformanceData _aircraftData =
-      AircraftRegistry.getPerformanceData(AircraftType.dv20);
+      AircraftRegistry.getPerformanceData(AircraftType.c172p);
 
   // Input values
   double _oat = 15;
   double _pressureAltitude = 0;
-  double _mass = 700;
+  double _mass = lbsToKg(2400); // C172P max weight (2400 lbs ≈ 1088.62 kg)
   double _headwind = 0;
-  double _obstacleHeight = 15;
+  double _obstacleHeight = ftToM(50); // Exactly 50 ft (15.24 m) to match POH table
   SurfaceType _surfaceType = SurfaceType.paved;
-  bool _useImperial = false;
 
   // Getters
   AircraftType get aircraftType => _aircraftType;
@@ -32,19 +31,17 @@ class TakeoffViewModel extends ChangeNotifier {
   double get headwind => _headwind;
   double get obstacleHeight => _obstacleHeight;
   SurfaceType get surfaceType => _surfaceType;
-  bool get useImperial => _useImperial;
 
-  // Display values for imperial mode
-  double get displayOat => _useImperial ? celsiusToFahrenheit(_oat) : _oat;
-  double get displayMass => _useImperial ? kgToLbs(_mass) : _mass;
-  double get displayObstacleHeight =>
-      _useImperial ? mToFt(_obstacleHeight) : _obstacleHeight;
+  // Display values for imperial mode (provided by caller from SettingsViewModel)
+  double displayOat(bool useImperial) => useImperial ? celsiusToFahrenheit(_oat) : _oat;
+  double displayMass(bool useImperial) => useImperial ? kgToLbs(_mass) : _mass;
+  double displayObstacleHeight(bool useImperial) => useImperial ? obstacleHeightMToFt(_obstacleHeight) : _obstacleHeight;
 
-  String get tempUnit => _useImperial ? '°F' : '°C';
-  String get massUnit => _useImperial ? 'lbs' : 'kg';
+  String tempUnit(bool useImperial) => useImperial ? '°F' : '°C';
+  String massUnit(bool useImperial) => useImperial ? 'lbs' : 'kg';
   String get altUnit => 'ft'; // Always ft for pressure altitude
-  String get distUnit => _useImperial ? 'ft' : 'm';
-  String get obstUnit => _useImperial ? 'ft' : 'm';
+  String distUnit(bool useImperial) => useImperial ? 'ft' : 'm';
+  String obstUnit(bool useImperial) => useImperial ? 'ft' : 'm';
   String get windUnit => 'kts'; // Always kts
 
   // Slider ranges from aircraft data
@@ -65,8 +62,13 @@ class TakeoffViewModel extends ChangeNotifier {
   /// Supported surfaces for the current aircraft.
   List<SurfaceType> get supportedSurfaces => _aircraftData.supportedSurfaces;
 
+  TakeoffResult? _cachedResult;
+  double _cachedSafetyMargin = 1.33;
+
   // Computed result
-  TakeoffResult get result {
+  TakeoffResult get result => _cachedResult ?? _calculateResult();
+
+  TakeoffResult _calculateResult({double safetyMargin = 1.33}) {
     final input = TakeoffInput(
       oat: _oat,
       pressureAltitude: _pressureAltitude,
@@ -75,7 +77,16 @@ class TakeoffViewModel extends ChangeNotifier {
       obstacleHeight: _obstacleHeight,
       surfaceType: _surfaceType,
     );
-    return TakeoffCalculator.calculate(input, _aircraftData);
+    _cachedSafetyMargin = safetyMargin;
+    _cachedResult = TakeoffCalculator.calculate(input, _aircraftData, safetyMargin: safetyMargin);
+    return _cachedResult!;
+  }
+
+  void recalculateWithSafetyMargin(double safetyMargin) {
+    if (_cachedSafetyMargin != safetyMargin) {
+      _calculateResult(safetyMargin: safetyMargin);
+      notifyListeners();
+    }
   }
 
   String? get validationError {
@@ -90,11 +101,11 @@ class TakeoffViewModel extends ChangeNotifier {
     return input.validate(_aircraftData);
   }
 
-  // Display results
-  double get displayGroundRoll =>
-      _useImperial ? mToFt(result.groundRollM) : result.groundRollM;
-  double get displayTotalDistance =>
-      _useImperial ? mToFt(result.totalDistanceM) : result.totalDistanceM;
+  // Display results (with safety margin applied)
+  double displayGroundRoll(bool useImperial) =>
+      useImperial ? mToFt(result.groundRollWithSafetyM) : result.groundRollWithSafetyM;
+  double displayTotalDistance(bool useImperial) =>
+      useImperial ? mToFt(result.totalDistanceWithSafetyM) : result.totalDistanceWithSafetyM;
 
   // Setters
   void setAircraftType(AircraftType type) {
@@ -114,41 +125,43 @@ class TakeoffViewModel extends ChangeNotifier {
       _surfaceType = SurfaceType.paved;
     }
 
+    _cachedResult = null; // Invalidate cache
     notifyListeners();
   }
 
   void setOat(double value) {
     _oat = value;
+    _cachedResult = null; // Invalidate cache
     notifyListeners();
   }
 
   void setPressureAltitude(double value) {
     _pressureAltitude = value;
+    _cachedResult = null; // Invalidate cache
     notifyListeners();
   }
 
   void setMass(double value) {
     _mass = value;
+    _cachedResult = null; // Invalidate cache
     notifyListeners();
   }
 
   void setHeadwind(double value) {
     _headwind = value;
+    _cachedResult = null; // Invalidate cache
     notifyListeners();
   }
 
   void setObstacleHeight(double value) {
     _obstacleHeight = value;
+    _cachedResult = null; // Invalidate cache
     notifyListeners();
   }
 
   void setSurfaceType(SurfaceType value) {
     _surfaceType = value;
-    notifyListeners();
-  }
-
-  void toggleUnits() {
-    _useImperial = !_useImperial;
+    _cachedResult = null; // Invalidate cache
     notifyListeners();
   }
 }

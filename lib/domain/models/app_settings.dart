@@ -8,69 +8,89 @@ class AppSettings {
   final double takeoffSafetyMargin; // e.g., 1.33
   final double landingSafetyMargin; // e.g., 1.43
 
-  // Default corrections (used when POH doesn't have specific data)
-  final double dryGrassCorrection; // e.g., 1.20
-  final double wetGrassCorrection; // e.g., 1.25
-  final double wetPavedCorrection; // e.g., 1.15
-  final double upslopeCorrection; // % per 1% slope
-  final double downslopeCorrection; // % per 1% slope
+  // Takeoff corrections (used when POH doesn't have specific data)
+  final double takeoffDryGrassCorrection; // e.g., 1.20
+  final double takeoffWetGrassCorrection; // e.g., 1.25
+  final double takeoffWetPavedCorrection; // e.g., 1.15
+  final double takeoffUpslopeCorrection; // % per 1% slope, e.g., 0.05
+
+  // Landing corrections (used when POH doesn't have specific data)
+  final double landingDryGrassCorrection; // e.g., 1.20
+  final double landingWetGrassCorrection; // e.g., 1.38
+  final double landingWetPavedCorrection; // e.g., 1.15
+  final double landingDownslopeCorrection; // % per 1% slope, e.g., 0.05
 
   const AppSettings({
     this.useImperial = false,
     this.takeoffSafetyMargin = 1.33,
     this.landingSafetyMargin = 1.43,
-    this.dryGrassCorrection = 1.20,
-    this.wetGrassCorrection = 1.25,
-    this.wetPavedCorrection = 1.15,
-    this.upslopeCorrection = 0.05,
-    this.downslopeCorrection = 0.05,
+    // Takeoff corrections (from Operations Manual)
+    this.takeoffDryGrassCorrection = 1.20,
+    this.takeoffWetGrassCorrection = 1.25,
+    this.takeoffWetPavedCorrection = 1.15,
+    this.takeoffUpslopeCorrection = 0.05,
+    // Landing corrections (from Operations Manual)
+    this.landingDryGrassCorrection = 1.20,
+    this.landingWetGrassCorrection = 1.38,
+    this.landingWetPavedCorrection = 1.15,
+    this.landingDownslopeCorrection = 0.05,
   });
 
   AppSettings copyWith({
     bool? useImperial,
     double? takeoffSafetyMargin,
     double? landingSafetyMargin,
-    double? dryGrassCorrection,
-    double? wetGrassCorrection,
-    double? wetPavedCorrection,
-    double? upslopeCorrection,
-    double? downslopeCorrection,
+    double? takeoffDryGrassCorrection,
+    double? takeoffWetGrassCorrection,
+    double? takeoffWetPavedCorrection,
+    double? takeoffUpslopeCorrection,
+    double? landingDryGrassCorrection,
+    double? landingWetGrassCorrection,
+    double? landingWetPavedCorrection,
+    double? landingDownslopeCorrection,
   }) {
     return AppSettings(
       useImperial: useImperial ?? this.useImperial,
       takeoffSafetyMargin: takeoffSafetyMargin ?? this.takeoffSafetyMargin,
       landingSafetyMargin: landingSafetyMargin ?? this.landingSafetyMargin,
-      dryGrassCorrection: dryGrassCorrection ?? this.dryGrassCorrection,
-      wetGrassCorrection: wetGrassCorrection ?? this.wetGrassCorrection,
-      wetPavedCorrection: wetPavedCorrection ?? this.wetPavedCorrection,
-      upslopeCorrection: upslopeCorrection ?? this.upslopeCorrection,
-      downslopeCorrection: downslopeCorrection ?? this.downslopeCorrection,
+      takeoffDryGrassCorrection: takeoffDryGrassCorrection ?? this.takeoffDryGrassCorrection,
+      takeoffWetGrassCorrection: takeoffWetGrassCorrection ?? this.takeoffWetGrassCorrection,
+      takeoffWetPavedCorrection: takeoffWetPavedCorrection ?? this.takeoffWetPavedCorrection,
+      takeoffUpslopeCorrection: takeoffUpslopeCorrection ?? this.takeoffUpslopeCorrection,
+      landingDryGrassCorrection: landingDryGrassCorrection ?? this.landingDryGrassCorrection,
+      landingWetGrassCorrection: landingWetGrassCorrection ?? this.landingWetGrassCorrection,
+      landingWetPavedCorrection: landingWetPavedCorrection ?? this.landingWetPavedCorrection,
+      landingDownslopeCorrection: landingDownslopeCorrection ?? this.landingDownslopeCorrection,
     );
   }
 
-  // Get surface correction based on type
-  double getSurfaceCorrection(SurfaceCondition condition) {
-    switch (condition) {
-      case SurfaceCondition.dryGrass:
-        return dryGrassCorrection;
-      case SurfaceCondition.wetGrass:
-        return wetGrassCorrection;
-      case SurfaceCondition.wetPaved:
-        return wetPavedCorrection;
-      case SurfaceCondition.dryPaved:
-        return 1.0;
-    }
+  Map<String, dynamic> toJson() => {
+    'useImperial': useImperial,
+    'takeoffSafetyMargin': takeoffSafetyMargin,
+    'landingSafetyMargin': landingSafetyMargin,
+    'takeoffDryGrassCorrection': takeoffDryGrassCorrection,
+    'takeoffWetGrassCorrection': takeoffWetGrassCorrection,
+    'takeoffWetPavedCorrection': takeoffWetPavedCorrection,
+    'takeoffUpslopeCorrection': takeoffUpslopeCorrection,
+    'landingDryGrassCorrection': landingDryGrassCorrection,
+    'landingWetGrassCorrection': landingWetGrassCorrection,
+    'landingWetPavedCorrection': landingWetPavedCorrection,
+    'landingDownslopeCorrection': landingDownslopeCorrection,
+  };
+
+  factory AppSettings.fromJson(Map<String, dynamic> json) {
+    return AppSettings(
+      useImperial: json['useImperial'] as bool? ?? false,
+      takeoffSafetyMargin: (json['takeoffSafetyMargin'] as num?)?.toDouble() ?? 1.33,
+      landingSafetyMargin: (json['landingSafetyMargin'] as num?)?.toDouble() ?? 1.43,
+      takeoffDryGrassCorrection: (json['takeoffDryGrassCorrection'] as num?)?.toDouble() ?? 1.20,
+      takeoffWetGrassCorrection: (json['takeoffWetGrassCorrection'] as num?)?.toDouble() ?? 1.25,
+      takeoffWetPavedCorrection: (json['takeoffWetPavedCorrection'] as num?)?.toDouble() ?? 1.15,
+      takeoffUpslopeCorrection: (json['takeoffUpslopeCorrection'] as num?)?.toDouble() ?? 0.05,
+      landingDryGrassCorrection: (json['landingDryGrassCorrection'] as num?)?.toDouble() ?? 1.20,
+      landingWetGrassCorrection: (json['landingWetGrassCorrection'] as num?)?.toDouble() ?? 1.38,
+      landingWetPavedCorrection: (json['landingWetPavedCorrection'] as num?)?.toDouble() ?? 1.15,
+      landingDownslopeCorrection: (json['landingDownslopeCorrection'] as num?)?.toDouble() ?? 0.05,
+    );
   }
-}
-
-enum SurfaceCondition {
-  dryPaved('Dry Paved', 1.0),
-  wetPaved('Wet Paved', 1.15),
-  dryGrass('Dry Grass', 1.20),
-  wetGrass('Wet Grass', 1.25);
-
-  const SurfaceCondition(this.label, this.defaultCorrection);
-  
-  final String label;
-  final double defaultCorrection;
 }

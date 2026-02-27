@@ -23,7 +23,7 @@ class _FlightStateAppState extends State<FlightStateApp> {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => SettingsViewModel()),
+        ChangeNotifierProvider(create: (_) => SettingsViewModel()..loadSettings()),
         ChangeNotifierProvider(create: (_) => TakeoffViewModel()),
         ChangeNotifierProvider(create: (_) => LandingViewModel()),
       ],

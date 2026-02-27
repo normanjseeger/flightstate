@@ -11,20 +11,22 @@ class TakeoffCalculator {
   /// For C172P: direct table interpolation across 3 weight tables.
   static TakeoffResult calculate(
     TakeoffInput input,
-    AircraftPerformanceData data,
-  ) {
+    AircraftPerformanceData data, {
+    double safetyMargin = 1.0,
+  }) {
     // C172P has direct weight-interpolated tables — use them for accuracy
     if (data is C172pTakeoffData) {
-      return _calculateC172p(input, data);
+      return _calculateC172p(input, data, safetyMargin);
     }
 
-    return _calculateGeneric(input, data);
+    return _calculateGeneric(input, data, safetyMargin);
   }
 
   /// Generic factor-chain calculation (DV-20 nomogram style).
   static TakeoffResult _calculateGeneric(
     TakeoffInput input,
     AircraftPerformanceData data,
+    double safetyMargin,
   ) {
     // Panel 1: Base ground roll at max weight
     final baseRoll = data.getBaseGroundRoll(input.oat, input.pressureAltitude);
@@ -38,7 +40,8 @@ class TakeoffCalculator {
     final windAdjusted = massAdjusted * windFactor;
 
     // Surface correction
-    final groundRoll = windAdjusted * input.surfaceType.correctionFactor;
+    final surfaceFactor = input.surfaceType.correctionFactor;
+    final groundRoll = windAdjusted * surfaceFactor;
 
     // Panel 4: Obstacle clearance
     final obstacleFactor = data.getObstacleFactor(input.obstacleHeight);
@@ -47,6 +50,12 @@ class TakeoffCalculator {
     return TakeoffResult(
       groundRollM: groundRoll,
       totalDistanceM: totalDistance,
+      baseGroundRollM: baseRoll,
+      massFactor: massFactor,
+      windFactor: windFactor,
+      surfaceFactor: surfaceFactor,
+      obstacleFactor: obstacleFactor,
+      safetyMargin: safetyMargin,
     );
   }
 
@@ -54,6 +63,7 @@ class TakeoffCalculator {
   static TakeoffResult _calculateC172p(
     TakeoffInput input,
     C172pTakeoffData data,
+    double safetyMargin,
   ) {
     final massLbs = kgToLbs(input.mass);
 
@@ -75,25 +85,48 @@ class TakeoffCalculator {
     // Surface correction
     final surfaceFactor = input.surfaceType.correctionFactor;
 
-    final groundRollM = ftToM(grFt) * windFactor * surfaceFactor;
+    final baseGroundRollM = ftToM(grFt);
+    final groundRollM = baseGroundRollM * windFactor * surfaceFactor;
 
     // For total distance, interpolate based on obstacle height
     final maxObstM = ftToM(50);
-    if (input.obstacleHeight <= 0) {
+
+    // Snap obstacle height to 0 or 50 ft if very close (within 0.3 m / ~1 ft)
+    var obstHeight = input.obstacleHeight;
+    if ((obstHeight - 0).abs() < 0.3) obstHeight = 0;
+    if ((obstHeight - maxObstM).abs() < 0.3) obstHeight = maxObstM;
+
+    if (obstHeight <= 0) {
       return TakeoffResult(
         groundRollM: groundRollM,
         totalDistanceM: groundRollM,
+        baseGroundRollM: baseGroundRollM,
+        massFactor: 1.0, // built into table lookup
+        windFactor: windFactor,
+        surfaceFactor: surfaceFactor,
+        obstacleFactor: 1.0,
+        safetyMargin: safetyMargin,
       );
     }
 
-    final totalOverObstacleM = ftToM(tdFt) * windFactor * surfaceFactor;
-    final t = (input.obstacleHeight / maxObstM).clamp(0.0, 1.0);
+    final baseTotalOverObstacleM = ftToM(tdFt);
+    final totalOverObstacleM = baseTotalOverObstacleM * windFactor * surfaceFactor;
+    final t = (obstHeight / maxObstM).clamp(0.0, 1.0);
     final totalDistanceM =
         groundRollM + t * (totalOverObstacleM - groundRollM);
+
+    // Effective obstacle factor for display
+    final obstacleFactor = groundRollM > 0 ? totalDistanceM / groundRollM : 1.0;
 
     return TakeoffResult(
       groundRollM: groundRollM,
       totalDistanceM: totalDistanceM,
+      baseGroundRollM: baseGroundRollM,
+      massFactor: 1.0, // built into table lookup
+      windFactor: windFactor,
+      surfaceFactor: surfaceFactor,
+      obstacleFactor: obstacleFactor,
+      safetyMargin: safetyMargin,
     );
   }
 }

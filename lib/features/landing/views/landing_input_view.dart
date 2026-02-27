@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flightstate/core/math/unit_conversion.dart';
 import 'package:flightstate/core/models/aircraft_type.dart';
+import 'package:flightstate/core/widgets/afm_remarks_panel.dart';
+import 'package:flightstate/core/widgets/editable_slider.dart';
 import 'package:flightstate/data/aircraft/aircraft_registry.dart';
+import 'package:flightstate/domain/models/landing_surface_type.dart';
 import 'package:flightstate/features/landing/viewmodels/landing_viewmodel.dart';
+import 'package:flightstate/features/settings/viewmodels/settings_viewmodel.dart';
 import 'package:flightstate/features/settings/views/settings_view.dart';
 
 class LandingInputView extends StatelessWidget {
@@ -51,8 +56,16 @@ class LandingInputView extends StatelessWidget {
           ),
         ],
       ),
-      body: Consumer<LandingViewModel>(
-        builder: (context, vm, _) => ListView(
+      body: Consumer2<LandingViewModel, SettingsViewModel>(
+        builder: (context, vm, settingsVm, _) {
+          final useImperial = settingsVm.useImperial;
+          // Recalculate if safety margin changed
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (vm.result?.safetyMargin != settingsVm.landingSafetyMargin) {
+              vm.recalculateWithSafetyMargin(settingsVm.landingSafetyMargin);
+            }
+          });
+          return ListView(
           padding: const EdgeInsets.all(16),
           children: [
             // 1. Aircraft Selection
@@ -65,12 +78,12 @@ class LandingInputView extends StatelessWidget {
             // 2. Conditions
             _buildSectionHeader(context, 'Conditions', Icons.tune),
             const SizedBox(height: 8),
-            _buildConditionsCard(context, vm),
+            _buildConditionsCard(context, vm, useImperial),
 
             const SizedBox(height: 20),
 
-            // 3. Runway Surface
-            _buildSectionHeader(context, 'Runway Condition', Icons.water_drop),
+            // 3. Runway Surface / Condition
+            _buildSectionHeader(context, 'Runway Surface / Condition', Icons.wb_sunny),
             const SizedBox(height: 8),
             _buildSurfaceCard(context, vm),
 
@@ -78,8 +91,42 @@ class LandingInputView extends StatelessWidget {
 
             // 4. Results (at the end)
             _buildSectionHeader(context, 'Landing Performance', Icons.flight_land),
+
+            // Warning for DV20 (limited AFM data)
+            if (vm.aircraftType == AircraftType.dv20) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withAlpha(26),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.orange.withAlpha(77)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      size: 20,
+                      color: Colors.orange.shade700,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Landing distance calculations are based on conservative approximations. AFM provides limited data. Use conservative safety margins.',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: Colors.orange.shade900,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
             const SizedBox(height: 8),
-            _buildResultsCard(context, vm),
+            _buildResultsCard(context, vm, useImperial),
 
             // Validation Error
             if (vm.validationError != null)
@@ -112,9 +159,18 @@ class LandingInputView extends StatelessWidget {
                 ),
               ),
 
+            // AFM Remarks Panel
+            AfmRemarksPanel(
+              title: 'Remarks',
+              conditions: vm.aircraftData.landingConditions,
+              notes: vm.aircraftData.landingNotes,
+              initiallyExpanded: true,
+            ),
+
             const SizedBox(height: 32),
           ],
-        ),
+        );
+        },
       ),
     );
   }
@@ -175,7 +231,7 @@ class LandingInputView extends StatelessWidget {
     );
   }
 
-  Widget _buildResultsCard(BuildContext context, LandingViewModel vm) {
+  Widget _buildResultsCard(BuildContext context, LandingViewModel vm, bool useImperial) {
     final theme = Theme.of(context);
 
     return Card(
@@ -248,35 +304,28 @@ class LandingInputView extends StatelessWidget {
               context,
               icon: Icons.straighten,
               label: 'Ground Roll',
-              value: vm.displayGroundRoll,
-              unit: vm.distUnit,
+              value: vm.displayGroundRoll(useImperial),
+              unit: vm.distUnit(useImperial),
               isHighlighted: true,
             ),
+            _buildBreakdown(context, vm, useImperial: useImperial, isGroundRoll: true),
             const Divider(height: 24),
 
-            // Over Obstacle
+            // Over 15m/50ft Obstacle (only one result)
             _buildResultRow(
               context,
-              icon: Icons.alt_route,
-              label: 'Over ${vm.displayObstacleHeight.round()} ${vm.obstUnit} obstacle',
-              value: vm.displayTotalDistance,
-              unit: vm.distUnit,
+              icon: Icons.forest,
+              label: useImperial
+                  ? 'Over 50 ft / 15 m obstacle'
+                  : 'Over 15 m / 50 ft obstacle',
+              value: vm.displayTotalDistance(useImperial),
+              unit: vm.distUnit(useImperial),
               isHighlighted: true,
             ),
-            const Divider(height: 24),
+            _buildBreakdown(context, vm, useImperial: useImperial, isGroundRoll: false),
 
-            // Over 50ft
-            _buildResultRow(
-              context,
-              icon: Icons.park,
-              label: 'Over 50 ft (15m) obstacle',
-              value: vm.displayLandingDistance50ft,
-              unit: vm.distUnit,
-              isHighlighted: true,
-            ),
-
-            // Wet Surface Note
-            if (vm.isWetSurface)
+            // Surface Correction Note
+            if (vm.surfaceType != LandingSurfaceType.dryPaved)
               Padding(
                 padding: const EdgeInsets.only(top: 16),
                 child: Container(
@@ -288,10 +337,10 @@ class LandingInputView extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.water_drop, size: 16, color: Colors.amber),
+                      Icon(vm.surfaceType.icon, size: 16, color: Colors.amber),
                       const SizedBox(width: 8),
                       Text(
-                        'Includes wet surface correction (+10%)',
+                        'Includes ${vm.surfaceType.label.toLowerCase()} surface correction (${((vm.surfaceType.correctionFactor - 1.0) * 100).toStringAsFixed(0)}%)',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: Colors.amber.shade800,
                         ),
@@ -360,36 +409,90 @@ class LandingInputView extends StatelessWidget {
     );
   }
 
-  Widget _buildConditionsCard(BuildContext context, LandingViewModel vm) {
+  Widget _buildBreakdown(BuildContext context, LandingViewModel vm, {required bool useImperial, required bool isGroundRoll}) {
+    final theme = Theme.of(context);
+    final r = vm.result;
+    if (r == null) return const SizedBox.shrink();
+
+    final unit = vm.distUnit(useImperial);
+    final toDisplay = useImperial ? (double m) => m * 3.28084 : (double m) => m;
+
+    final baseVal = toDisplay(r.baseGroundRollM).round();
+    final parts = <String>[];
+
+    if (isGroundRoll) {
+      // Ground roll: base × mass × wind × surface × safety = result
+      parts.add('POH base: $baseVal $unit');
+      if (r.massFactor != 1.0) {
+        parts.add('mass: ×${r.massFactor.toStringAsFixed(2)}');
+      }
+      if (r.windFactor != 1.0) {
+        parts.add('wind: ×${r.windFactor.toStringAsFixed(2)}');
+      }
+      if (r.surfaceFactor != 1.0) {
+        parts.add('surface: ×${r.surfaceFactor.toStringAsFixed(2)}');
+      }
+      if (r.safetyMargin != 1.0) {
+        parts.add('safety: ×${r.safetyMargin.toStringAsFixed(2)}');
+      }
+    } else {
+      // Over obstacle: ground roll (before safety) × obstacle × safety = total
+      final grValBeforeSafety = toDisplay(r.groundRollM).round();
+      parts.add('ground roll: $grValBeforeSafety $unit');
+      if (r.obstacleFactor != 1.0) {
+        parts.add('obstacle: ×${r.obstacleFactor.toStringAsFixed(2)}');
+      }
+      if (r.safetyMargin != 1.0) {
+        parts.add('safety: ×${r.safetyMargin.toStringAsFixed(2)}');
+      }
+    }
+
+    // For ground roll, always show POH base even if no corrections applied
+    // For obstacle clearance, only show if there are multiple parts
+    if (parts.isEmpty) return const SizedBox.shrink();
+    if (!isGroundRoll && parts.length <= 1) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 4, left: 36),
+      child: Text(
+        parts.join(' → '),
+        style: theme.textTheme.bodySmall?.copyWith(
+          fontSize: 11,
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildConditionsCard(BuildContext context, LandingViewModel vm, bool useImperial) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            _buildSlider(
-              context,
+            EditableSlider(
               icon: Icons.thermostat,
               label: 'Outside Air Temperature',
               value: vm.oat,
               min: vm.oatMin,
               max: vm.oatMax,
               divisions: ((vm.oatMax - vm.oatMin) * 1).round(),
-              unit: vm.tempUnit,
-              displayValue: vm.displayOat,
+              unit: vm.tempUnit(useImperial),
+              displayValue: vm.displayOat(useImperial),
+              displayToValue: useImperial ? (f) => fahrenheitToCelsius(f) : null,
               onChanged: vm.setOat,
             ),
 
             const SizedBox(height: 16),
 
-            _buildSlider(
-              context,
+            EditableSlider(
               icon: Icons.speed,
               label: 'Pressure Altitude',
               value: vm.pressureAltitude,
               min: vm.altMin,
               max: vm.altMax,
               divisions: ((vm.altMax - vm.altMin) / 100).round(),
-              unit: vm.altUnit,
+              unit: vm.altUnit(useImperial),
               displayValue: vm.pressureAltitude,
               decimals: 0,
               onChanged: vm.setPressureAltitude,
@@ -397,24 +500,23 @@ class LandingInputView extends StatelessWidget {
 
             const SizedBox(height: 16),
 
-            _buildSlider(
-              context,
+            EditableSlider(
               icon: Icons.scale,
               label: 'Aircraft Mass',
               value: vm.mass,
               min: vm.massMin,
               max: vm.massMax,
               divisions: ((vm.massMax - vm.massMin) / 1).round(),
-              unit: vm.massUnit,
-              displayValue: vm.displayMass,
+              unit: vm.massUnit(useImperial),
+              displayValue: vm.displayMass(useImperial),
+              displayToValue: useImperial ? (lbs) => lbsToKg(lbs) : null,
               decimals: 0,
               onChanged: vm.setMass,
             ),
 
             const SizedBox(height: 16),
 
-            _buildSlider(
-              context,
+            EditableSlider(
               icon: Icons.air,
               label: 'Headwind Component',
               value: vm.headwind,
@@ -427,108 +529,21 @@ class LandingInputView extends StatelessWidget {
               onChanged: vm.setHeadwind,
             ),
 
-            const SizedBox(height: 16),
-
-            _buildSlider(
-              context,
-              icon: Icons.park,
-              label: 'Obstacle Height',
-              value: vm.obstacleHeight,
-              min: vm.obstMin,
-              max: vm.obstMax,
-              divisions: (vm.obstMax - vm.obstMin).round().clamp(1, 100),
-              unit: vm.obstUnit,
-              displayValue: vm.displayObstacleHeight,
-              decimals: 0,
-              onChanged: vm.setObstacleHeight,
-            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSlider(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required double value,
-    required double min,
-    required double max,
-    required int divisions,
-    required String unit,
-    required double displayValue,
-    required ValueChanged<double> onChanged,
-    String? subtitle,
-    int decimals = 1,
-  }) {
-    final theme = Theme.of(context);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(icon, size: 18, color: theme.colorScheme.primary),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  if (subtitle != null)
-                    Text(
-                      subtitle,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                '${displayValue.toStringAsFixed(decimals)} $unit',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.onPrimaryContainer,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        SliderTheme(
-          data: SliderTheme.of(context).copyWith(
-            trackHeight: 6,
-            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
-            overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
-          ),
-          child: Slider(
-            value: value,
-            min: min,
-            max: max,
-            divisions: divisions,
-            onChanged: onChanged,
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildSurfaceCard(BuildContext context, LandingViewModel vm) {
     final theme = Theme.of(context);
+    final settingsVm = context.watch<SettingsViewModel>();
+
+    // POH surfaces: Dry Paved (baseline) and Dry Grass (per AFM notes)
+    final pohSurfaces = [
+      LandingSurfaceType.dryPaved,
+      LandingSurfaceType.dryGrass,
+    ];
 
     return Card(
       child: Padding(
@@ -536,30 +551,69 @@ class LandingInputView extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Icon(Icons.water_drop, size: 20, color: theme.colorScheme.primary),
-                const SizedBox(width: 8),
-                Text(
-                  'Runway Condition',
-                  style: theme.textTheme.titleMedium,
-                ),
-              ],
+            // POH Data section
+            Text(
+              'POH Data',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: pohSurfaces.map((surface) {
+                final isSelected = vm.surfaceType == surface;
+                final factor = surface.correctionFactor;
+                return ChoiceChip(
+                  label: Text('${surface.label} (${factor.toStringAsFixed(2)}x)'),
+                  selected: isSelected,
+                  onSelected: (_) => vm.setSurfaceType(surface),
+                );
+              }).toList(),
+            ),
+
+            const SizedBox(height: 16),
+            const Divider(),
+            const SizedBox(height: 8),
+
+            // Additional surfaces from settings
+            Text(
+              'Additional (from Settings)',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.secondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: [
+                // Wet Paved
                 ChoiceChip(
-                  label: const Text('Dry'),
-                  selected: !vm.isWetSurface,
-                  onSelected: (_) => vm.setWetSurface(false),
+                  label: Text(
+                    'Wet Paved (${settingsVm.landingWetPavedCorrection.toStringAsFixed(2)}x)',
+                  ),
+                  selected: vm.surfaceType == LandingSurfaceType.wetPaved,
+                  onSelected: (_) => vm.setSurfaceType(LandingSurfaceType.wetPaved),
                 ),
+                // Wet Grass
                 ChoiceChip(
-                  label: const Text('Wet'),
-                  selected: vm.isWetSurface,
-                  onSelected: (_) => vm.setWetSurface(true),
+                  label: Text(
+                    'Wet Grass (${settingsVm.landingWetGrassCorrection.toStringAsFixed(2)}x)',
+                  ),
+                  selected: false,
+                  onSelected: (_) {},
+                ),
+                // Downslope
+                ChoiceChip(
+                  label: Text(
+                    'Downslope (${settingsVm.landingDownslopeCorrection.toStringAsFixed(2)}x)',
+                  ),
+                  selected: false,
+                  onSelected: (_) {},
                 ),
               ],
             ),

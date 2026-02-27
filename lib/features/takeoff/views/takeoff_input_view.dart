@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flightstate/core/math/unit_conversion.dart';
 import 'package:flightstate/core/models/aircraft_type.dart';
+import 'package:flightstate/core/widgets/afm_remarks_panel.dart';
+import 'package:flightstate/core/widgets/editable_slider.dart';
 import 'package:flightstate/data/aircraft/aircraft_registry.dart';
-import 'package:flightstate/domain/models/surface_type.dart';
 import 'package:flightstate/features/takeoff/viewmodels/takeoff_viewmodel.dart';
+import 'package:flightstate/features/settings/viewmodels/settings_viewmodel.dart';
 import 'package:flightstate/features/settings/views/settings_view.dart';
 
 class TakeoffInputView extends StatelessWidget {
@@ -15,7 +18,7 @@ class TakeoffInputView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Scaffold(
       appBar: AppBar(
         title: Row(
@@ -54,36 +57,44 @@ class TakeoffInputView extends StatelessWidget {
           ),
         ],
       ),
-      body: Consumer<TakeoffViewModel>(
-        builder: (context, vm, _) => ListView(
+      body: Consumer2<TakeoffViewModel, SettingsViewModel>(
+        builder: (context, vm, settingsVm, _) {
+          final useImperial = settingsVm.useImperial;
+          // Recalculate if safety margin changed
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (vm.result.safetyMargin != settingsVm.takeoffSafetyMargin) {
+              vm.recalculateWithSafetyMargin(settingsVm.takeoffSafetyMargin);
+            }
+          });
+          return ListView(
           padding: const EdgeInsets.all(16),
           children: [
             // 1. Aircraft Selection Section
             _buildSectionHeader(context, 'Aircraft', Icons.airplanemode_active),
             const SizedBox(height: 8),
             _buildAircraftCard(context, vm),
-            
+
             const SizedBox(height: 20),
-            
+
             // 2. Conditions Section
             _buildSectionHeader(context, 'Conditions', Icons.tune),
             const SizedBox(height: 8),
-            _buildConditionsCard(context, vm),
-            
+            _buildConditionsCard(context, vm, useImperial),
+
             const SizedBox(height: 20),
-            
-            // 3. Runway Surface Selection
-            _buildSectionHeader(context, 'Runway Surface', Icons.landscape),
+
+            // 3. Runway Surface / Condition
+            _buildSectionHeader(context, 'Runway Surface / Condition', Icons.wb_sunny),
             const SizedBox(height: 8),
             _buildSurfaceCard(context, vm),
-            
+
             const SizedBox(height: 20),
-            
+
             // 4. Results Section (at the end)
             _buildSectionHeader(context, 'Takeoff Performance', Icons.speed),
             const SizedBox(height: 8),
-            _buildResultsCard(context, vm),
-            
+            _buildResultsCard(context, vm, useImperial),
+
             // Validation Error
             if (vm.validationError != null)
               Padding(
@@ -114,10 +125,19 @@ class TakeoffInputView extends StatelessWidget {
                   ),
                 ),
               ),
-            
+
+            // AFM Remarks Panel
+            AfmRemarksPanel(
+              title: 'Remarks',
+              conditions: vm.aircraftData.takeoffConditions,
+              notes: vm.aircraftData.takeoffNotes,
+              initiallyExpanded: true,
+            ),
+
             const SizedBox(height: 32),
           ],
-        ),
+        );
+        },
       ),
     );
   }
@@ -141,7 +161,7 @@ class TakeoffInputView extends StatelessWidget {
 
   Widget _buildAircraftCard(BuildContext context, TakeoffViewModel vm) {
     final theme = Theme.of(context);
-    
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -161,7 +181,7 @@ class TakeoffInputView extends StatelessWidget {
               items: AircraftRegistry.supportedAircraft
                   .map(
                     (a) => DropdownMenuItem(
-                      value: a, 
+                      value: a,
                       child: Text(
                         a.label,
                         style: theme.textTheme.bodyLarge?.copyWith(
@@ -178,9 +198,9 @@ class TakeoffInputView extends StatelessWidget {
     );
   }
 
-  Widget _buildResultsCard(BuildContext context, TakeoffViewModel vm) {
+  Widget _buildResultsCard(BuildContext context, TakeoffViewModel vm, bool useImperial) {
     final theme = Theme.of(context);
-    
+
     return Card(
       elevation: 4,
       child: Container(
@@ -246,54 +266,31 @@ class TakeoffInputView extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 20),
-            
+
             // Ground Roll Result
             _buildResultRow(
               context,
               icon: Icons.straighten,
               label: 'Ground Roll',
-              value: vm.displayGroundRoll,
-              unit: vm.distUnit,
+              value: vm.displayGroundRoll(useImperial),
+              unit: vm.distUnit(useImperial),
               isHighlighted: true,
             ),
+            _buildBreakdown(context, vm, useImperial: useImperial, isGroundRoll: true),
             const Divider(height: 24),
-            
+
             // Total Distance Result
             _buildResultRow(
               context,
-              icon: Icons.alt_route,
-              label: 'Over ${vm.displayObstacleHeight.round()} ${vm.obstUnit} ft obstacle',
-              value: vm.displayTotalDistance,
-              unit: vm.distUnit,
+              icon: Icons.forest,
+              label: useImperial
+                  ? 'Over ${vm.displayObstacleHeight(useImperial).round()} ft / ${vm.obstacleHeight.round()} m obstacle'
+                  : 'Over ${vm.obstacleHeight.round()} m / ${vm.obstacleHeight == 15 ? '50' : vm.displayObstacleHeight(true).round()} ft obstacle',
+              value: vm.displayTotalDistance(useImperial),
+              unit: vm.distUnit(useImperial),
               isHighlighted: true,
             ),
-            
-            // Surface Correction Note
-            if (vm.surfaceType != SurfaceType.paved)
-              Padding(
-                padding: const EdgeInsets.only(top: 16),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.amber.withAlpha(51),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.amber.withAlpha(128)),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.info_outline, size: 16, color: Colors.amber),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Includes ${vm.surfaceType.label} correction '
-                        '(+${((vm.surfaceType.correctionFactor - 1) * 100).round()}%)',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: Colors.amber.shade800,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+            _buildBreakdown(context, vm, useImperial: useImperial, isGroundRoll: false),
           ],
         ),
       ),
@@ -309,7 +306,7 @@ class TakeoffInputView extends StatelessWidget {
     bool isHighlighted = false,
   }) {
     final theme = Theme.of(context);
-    
+
     return Row(
       children: [
         Icon(
@@ -354,31 +351,83 @@ class TakeoffInputView extends StatelessWidget {
     );
   }
 
-  Widget _buildConditionsCard(BuildContext context, TakeoffViewModel vm) {
+  Widget _buildBreakdown(BuildContext context, TakeoffViewModel vm, {required bool useImperial, required bool isGroundRoll}) {
+    final theme = Theme.of(context);
+    final r = vm.result;
+    final unit = vm.distUnit(useImperial);
+    final toDisplay = useImperial ? (double m) => m * 3.28084 : (double m) => m;
+
+    final baseVal = toDisplay(r.baseGroundRollM).round();
+    final parts = <String>[];
+
+    if (isGroundRoll) {
+      // Ground roll: base × mass × wind × surface × safety = result
+      parts.add('POH base: $baseVal $unit');
+      if (r.massFactor != 1.0) {
+        parts.add('mass: ×${r.massFactor.toStringAsFixed(2)}');
+      }
+      if (r.windFactor != 1.0) {
+        parts.add('wind: ×${r.windFactor.toStringAsFixed(2)}');
+      }
+      if (r.surfaceFactor != 1.0) {
+        parts.add('surface: ×${r.surfaceFactor.toStringAsFixed(2)}');
+      }
+      if (r.safetyMargin != 1.0) {
+        parts.add('safety: ×${r.safetyMargin.toStringAsFixed(2)}');
+      }
+    } else {
+      // Over obstacle: ground roll (before safety) × obstacle × safety = total
+      final grVal = toDisplay(r.groundRollM).round();
+      parts.add('ground roll: $grVal $unit');
+      if (r.obstacleFactor != 1.0) {
+        parts.add('obstacle: ×${r.obstacleFactor.toStringAsFixed(2)}');
+      }
+      if (r.safetyMargin != 1.0) {
+        parts.add('safety: ×${r.safetyMargin.toStringAsFixed(2)}');
+      }
+    }
+
+    // For ground roll, always show POH base even if no corrections applied
+    // For obstacle clearance, only show if there are multiple parts
+    if (parts.isEmpty) return const SizedBox.shrink();
+    if (!isGroundRoll && parts.length <= 1) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 4, left: 36),
+      child: Text(
+        parts.join(' → '),
+        style: theme.textTheme.bodySmall?.copyWith(
+          fontSize: 11,
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildConditionsCard(BuildContext context, TakeoffViewModel vm, bool useImperial) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
             // Temperature
-            _buildSlider(
-              context,
+            EditableSlider(
               icon: Icons.thermostat,
               label: 'Outside Air Temperature',
               value: vm.oat,
               min: vm.oatMin,
               max: vm.oatMax,
               divisions: ((vm.oatMax - vm.oatMin) * 1).round(),
-              unit: vm.tempUnit,
-              displayValue: vm.displayOat,
+              unit: vm.tempUnit(useImperial),
+              displayValue: vm.displayOat(useImperial),
+              displayToValue: useImperial ? (f) => fahrenheitToCelsius(f) : null,
               onChanged: vm.setOat,
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Pressure Altitude
-            _buildSlider(
-              context,
+            EditableSlider(
               icon: Icons.speed,
               label: 'Pressure Altitude',
               value: vm.pressureAltitude,
@@ -390,29 +439,28 @@ class TakeoffInputView extends StatelessWidget {
               decimals: 0,
               onChanged: vm.setPressureAltitude,
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Mass
-            _buildSlider(
-              context,
+            EditableSlider(
               icon: Icons.scale,
               label: 'Aircraft Mass',
               value: vm.mass,
               min: vm.massMin,
               max: vm.massMax,
               divisions: ((vm.massMax - vm.massMin) / 1).round(),
-              unit: vm.massUnit,
-              displayValue: vm.displayMass,
+              unit: vm.massUnit(useImperial),
+              displayValue: vm.displayMass(useImperial),
+              displayToValue: useImperial ? (lbs) => lbsToKg(lbs) : null,
               decimals: 0,
               onChanged: vm.setMass,
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Wind
-            _buildSlider(
-              context,
+            EditableSlider(
               icon: Icons.air,
               label: 'Headwind Component',
               value: vm.headwind,
@@ -424,22 +472,24 @@ class TakeoffInputView extends StatelessWidget {
               subtitle: 'Negative = tailwind',
               onChanged: vm.setHeadwind,
             ),
-            
+
             // Obstacle (conditional)
             if (vm.showObstacleSlider) ...[
               const SizedBox(height: 16),
-              _buildSlider(
-                context,
+              EditableSlider(
                 icon: Icons.park,
                 label: 'Obstacle Height',
                 value: vm.obstacleHeight,
                 min: vm.obstMin,
                 max: vm.obstMax,
                 divisions: (vm.obstMax - vm.obstMin).round().clamp(1, 100),
-                unit: vm.obstUnit,
-                displayValue: vm.displayObstacleHeight,
+                unit: vm.obstUnit(useImperial),
+                displayValue: vm.displayObstacleHeight(useImperial),
                 decimals: 0,
                 onChanged: vm.setObstacleHeight,
+                displayToValue: useImperial
+                    ? (displayVal) => displayVal == 50.0 ? 15.0 : displayVal * 0.3048
+                    : null,
               ),
             ],
           ],
@@ -448,106 +498,16 @@ class TakeoffInputView extends StatelessWidget {
     );
   }
 
-  Widget _buildSlider(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required double value,
-    required double min,
-    required double max,
-    required int divisions,
-    required String unit,
-    required double displayValue,
-    required ValueChanged<double> onChanged,
-    String? subtitle,
-    int decimals = 1,
-  }) {
-    final theme = Theme.of(context);
-    
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(icon, size: 18, color: theme.colorScheme.primary),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  if (subtitle != null)
-                    Text(
-                      subtitle,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                '${displayValue.toStringAsFixed(decimals)} $unit',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.onPrimaryContainer,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        SliderTheme(
-          data: SliderTheme.of(context).copyWith(
-            trackHeight: 6,
-            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
-            overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
-          ),
-          child: Slider(
-            value: value,
-            min: min,
-            max: max,
-            divisions: divisions,
-            onChanged: onChanged,
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildSurfaceCard(BuildContext context, TakeoffViewModel vm) {
     final theme = Theme.of(context);
-    
+    final settingsVm = context.watch<SettingsViewModel>();
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Icon(Icons.landscape, size: 20, color: theme.colorScheme.primary),
-                const SizedBox(width: 8),
-                Text(
-                  'Runway Surface',
-                  style: theme.textTheme.titleMedium,
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            
             // POH-provided surfaces
             Text(
               'POH Data',
@@ -562,18 +522,21 @@ class TakeoffInputView extends StatelessWidget {
               runSpacing: 8,
               children: vm.supportedSurfaces.map((surface) {
                 final isSelected = vm.surfaceType == surface;
+                final factor = surface.correctionFactor;
                 return ChoiceChip(
-                  label: Text(surface.label),
+                  label: Text(
+                    '${surface.label} (${factor.toStringAsFixed(2)}x)',
+                  ),
                   selected: isSelected,
                   onSelected: (_) => vm.setSurfaceType(surface),
                 );
               }).toList(),
             ),
-            
+
             const SizedBox(height: 16),
-            Divider(),
+            const Divider(),
             const SizedBox(height: 8),
-            
+
             // Additional surfaces from settings
             Text(
               'Additional (from Settings)',
@@ -588,12 +551,23 @@ class TakeoffInputView extends StatelessWidget {
               runSpacing: 8,
               children: [
                 ChoiceChip(
-                  label: const Text('Wet Paved'),
+                  label: Text(
+                    'Wet Paved (${settingsVm.takeoffWetPavedCorrection.toStringAsFixed(2)}x)',
+                  ),
                   selected: false,
                   onSelected: (_) {},
                 ),
                 ChoiceChip(
-                  label: const Text('Wet Grass'),
+                  label: Text(
+                    'Wet Grass (${settingsVm.takeoffWetGrassCorrection.toStringAsFixed(2)}x)',
+                  ),
+                  selected: false,
+                  onSelected: (_) {},
+                ),
+                ChoiceChip(
+                  label: Text(
+                    'Dry Grass (${settingsVm.takeoffDryGrassCorrection.toStringAsFixed(2)}x)',
+                  ),
                   selected: false,
                   onSelected: (_) {},
                 ),

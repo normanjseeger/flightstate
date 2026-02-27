@@ -54,4 +54,20 @@ abstract class AircraftPerformanceData {
 
   /// Landing obstacle factor.
   double getLandingObstacleFactor(double obstacleM);
+
+  // ── AFM Remarks ──
+
+  /// Conditions for takeoff performance calculations per AFM/POH.
+  /// These are the baseline assumptions (e.g., flaps setting, power, runway).
+  List<String> get takeoffConditions;
+
+  /// Notes for takeoff performance per AFM/POH.
+  /// These are important caveats, technique notes, or warnings.
+  List<String> get takeoffNotes;
+
+  /// Conditions for landing performance calculations per AFM/POH.
+  List<String> get landingConditions;
+
+  /// Notes for landing performance per AFM/POH.
+  List<String> get landingNotes;
 }

@@ -1,26 +1,27 @@
 import 'package:flutter/foundation.dart';
 import 'package:flightstate/core/models/aircraft_type.dart';
+import 'package:flightstate/core/math/unit_conversion.dart';
 import 'package:flightstate/data/aircraft/aircraft_registry.dart';
 import 'package:flightstate/data/aircraft/aircraft_performance_data.dart';
 import 'package:flightstate/domain/models/landing_input.dart';
 import 'package:flightstate/domain/models/landing_result.dart';
+import 'package:flightstate/domain/models/landing_surface_type.dart';
 import 'package:flightstate/domain/performance/landing_calculator.dart';
 
 class LandingViewModel extends ChangeNotifier {
   // Aircraft
   AircraftType _aircraftType = AircraftType.c172p;
   AircraftPerformanceData? _aircraftData;
-  
+
   // Inputs
   double _oat = 15; // °C
   double _pressureAltitude = 0; // ft
-  double _mass = 730; // kg (DV20)
+  double _mass = lbsToKg(2400); // C172P max weight (2400 lbs ≈ 1088.62 kg)
   double _headwind = 0; // kts
-  double _obstacleHeight = 15; // m (50 ft)
-  bool _isWetSurface = false;
-  
-  // Units
-  bool _useImperial = false;
+  LandingSurfaceType _surfaceType = LandingSurfaceType.dryPaved;
+
+  // Fixed at 15m/50ft obstacle for landing
+  static const double _obstacleHeight = 15.0;
 
   LandingViewModel() {
     _loadAircraftData();
@@ -28,29 +29,28 @@ class LandingViewModel extends ChangeNotifier {
 
   // Getters
   AircraftType get aircraftType => _aircraftType;
+  AircraftPerformanceData get aircraftData => _aircraftData ?? AircraftRegistry.getPerformanceData(_aircraftType);
   double get oat => _oat;
   double get pressureAltitude => _pressureAltitude;
   double get mass => _mass;
   double get headwind => _headwind;
-  double get obstacleHeight => _obstacleHeight;
-  bool get isWetSurface => _isWetSurface;
-  bool get useImperial => _useImperial;
+  LandingSurfaceType get surfaceType => _surfaceType;
+
+  // Result getter
+  LandingResult? get result => _result;
 
   // Unit getters
-  String get tempUnit => useImperial ? '°F' : '°C';
-  String get altUnit => useImperial ? 'ft' : 'ft';
-  String get massUnit => useImperial ? 'lbs' : 'kg';
+  String tempUnit(bool useImperial) => useImperial ? '°F' : '°C';
+  String altUnit(bool useImperial) => useImperial ? 'ft' : 'ft';
+  String massUnit(bool useImperial) => useImperial ? 'lbs' : 'kg';
   String get windUnit => 'kts';
-  String get obstUnit => useImperial ? 'ft' : 'm';
-  String get distUnit => useImperial ? 'ft' : 'm';
+  String distUnit(bool useImperial) => useImperial ? 'ft' : 'm';
 
   // Display values (converted)
-  double get displayOat => useImperial ? (oat * 9 / 5) + 32 : oat;
-  double get displayMass => useImperial ? mass * 2.20462 : mass;
-  double get displayObstacleHeight => useImperial ? obstacleHeight * 3.28084 : obstacleHeight;
-  double get displayGroundRoll => _result != null ? _result!.groundRoll(distUnit) : 0;
-  double get displayTotalDistance => _result != null ? _result!.totalDistance(distUnit) : 0;
-  double get displayLandingDistance50ft => _result != null ? _result!.landingDistanceOver50ft(distUnit) : 0;
+  double displayOat(bool useImperial) => useImperial ? celsiusToFahrenheit(oat) : oat;
+  double displayMass(bool useImperial) => useImperial ? kgToLbs(mass) : mass;
+  double displayGroundRoll(bool useImperial) => _result != null ? _result!.groundRoll(distUnit(useImperial)) : 0;
+  double displayTotalDistance(bool useImperial) => _result != null ? _result!.totalDistance(distUnit(useImperial)) : 0;
 
   // Input ranges
   double get oatMin => -20;
@@ -61,8 +61,6 @@ class LandingViewModel extends ChangeNotifier {
   double get massMax => _aircraftData?.massMaxKg ?? 730;
   double get windMin => -10;
   double get windMax => 20;
-  double get obstMin => 0;
-  double get obstMax => 15;
 
   LandingResult? _result;
 
@@ -110,41 +108,31 @@ class LandingViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setObstacleHeight(double value) {
-    _obstacleHeight = value;
+  void setSurfaceType(LandingSurfaceType value) {
+    _surfaceType = value;
     _calculate();
     notifyListeners();
   }
 
-  void setWetSurface(bool value) {
-    _isWetSurface = value;
-    _calculate();
-    notifyListeners();
-  }
-
-  void toggleUnits() {
-    _useImperial = !_useImperial;
-    notifyListeners();
-  }
-
-  void _calculate() {
+  void _calculate({double safetyMargin = 1.43}) {
     if (_aircraftData == null) return;
-    
-    // Convert units for calculation
-    double calcOat = useImperial ? (oat - 32) * 5 / 9 : oat;
-    double calcMass = useImperial ? mass / 2.20462 : mass;
-    double calcObst = useImperial ? obstacleHeight / 3.28084 : obstacleHeight;
 
     final input = LandingInput(
-      oatC: calcOat,
+      oatC: oat,
       pressureAltitudeFt: pressureAltitude,
-      massKg: calcMass,
+      massKg: mass,
       headwindKts: headwind,
-      obstacleHeightM: calcObst,
-      isWetSurface: isWetSurface,
+      obstacleHeightM: _obstacleHeight,
+      surfaceType: surfaceType,
     );
 
     final calculator = LandingCalculator(_aircraftData!);
-    _result = calculator.calculate(input);
+    _result = calculator.calculate(input, safetyMargin: safetyMargin);
+  }
+
+  // Allow recalculation with updated safety margin
+  void recalculateWithSafetyMargin(double safetyMargin) {
+    _calculate(safetyMargin: safetyMargin);
+    notifyListeners();
   }
 }

@@ -1,12 +1,14 @@
 // Landing input parameters
 
+import 'package:flightstate/domain/models/landing_surface_type.dart';
+
 class LandingInput {
   final double oatC;
   final double pressureAltitudeFt;
   final double massKg;
   final double headwindKts;
   final double obstacleHeightM;
-  final bool isWetSurface;
+  final LandingSurfaceType surfaceType;
 
   const LandingInput({
     required this.oatC,
@@ -14,7 +16,7 @@ class LandingInput {
     required this.massKg,
     required this.headwindKts,
     required this.obstacleHeightM,
-    required this.isWetSurface,
+    required this.surfaceType,
   });
 
   LandingInput copyWith({
@@ -23,7 +25,7 @@ class LandingInput {
     double? massKg,
     double? headwindKts,
     double? obstacleHeightM,
-    bool? isWetSurface,
+    LandingSurfaceType? surfaceType,
   }) {
     return LandingInput(
       oatC: oatC ?? this.oatC,
@@ -31,7 +33,7 @@ class LandingInput {
       massKg: massKg ?? this.massKg,
       headwindKts: headwindKts ?? this.headwindKts,
       obstacleHeightM: obstacleHeightM ?? this.obstacleHeightM,
-      isWetSurface: isWetSurface ?? this.isWetSurface,
+      surfaceType: surfaceType ?? this.surfaceType,
     );
   }
 }
