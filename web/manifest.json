@@ -5,7 +5,7 @@
     "display": "standalone",
     "background_color": "#1565C0",
     "theme_color": "#1565C0",
-    "description": "DV-20 Takeoff Performance Calculator",
+    "description": "Aircraft Flight Calculation Toolbox",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
