@@ -286,6 +286,16 @@ class _MainScreenState extends State<_MainScreen> {
   ];
 
   void _onItemTapped(int index) {
+    // Sync aircraft type between views when switching tabs
+    final takeoffVm = context.read<TakeoffViewModel>();
+    final landingVm = context.read<LandingViewModel>();
+    if (index == 1) {
+      // Switching to Landing — sync from Takeoff
+      landingVm.setAircraftType(takeoffVm.aircraftType);
+    } else if (index == 0) {
+      // Switching to Takeoff — sync from Landing
+      takeoffVm.setAircraftType(landingVm.aircraftType);
+    }
     setState(() {
       _selectedIndex = index;
     });
