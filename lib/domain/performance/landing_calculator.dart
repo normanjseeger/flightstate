@@ -4,8 +4,10 @@
 import 'package:flightstate/core/math/unit_conversion.dart';
 import 'package:flightstate/data/aircraft/aircraft_performance_data.dart';
 import 'package:flightstate/data/aircraft/c172p/c172p_takeoff_data.dart';
+import 'package:flightstate/data/aircraft/dv20/dv20_takeoff_data.dart';
 import 'package:flightstate/domain/models/landing_input.dart';
 import 'package:flightstate/domain/models/landing_result.dart';
+import 'package:flightstate/domain/models/landing_surface_type.dart';
 
 class LandingCalculator {
   final AircraftPerformanceData data;
@@ -16,6 +18,11 @@ class LandingCalculator {
     // C172P has direct weight-interpolated landing tables — use them for accuracy
     if (data is C172pTakeoffData) {
       return _calculateC172p(input, data as C172pTakeoffData, safetyMargin);
+    }
+
+    // DV20 has limited AFM data — use exact values at baseline, approximations elsewhere
+    if (data is Dv20TakeoffData) {
+      return _calculateDv20(input, data as Dv20TakeoffData, safetyMargin);
     }
 
     return _calculateGeneric(input, safetyMargin);
@@ -104,5 +111,48 @@ class LandingCalculator {
       obstacleFactor: obstacleFactor,
       safetyMargin: safetyMargin,
     );
+  }
+
+  /// DV20-specific: Return exact AFM values at baseline, use approximations elsewhere.
+  ///
+  /// AFM Section 5.3.12 provides ONE data point:
+  /// - Conditions: MSL (0 ft), 15°C (ISA), 730 kg, 0 kts wind, paved
+  /// - Ground roll: 228 m
+  /// - Over 50 ft: 454 m
+  ///
+  /// When user sets EXACT AFM conditions, return EXACT AFM values.
+  /// Otherwise, use conservative approximations.
+  LandingResult _calculateDv20(
+    LandingInput input,
+    Dv20TakeoffData data,
+    double safetyMargin,
+  ) {
+    // Check if we're at the exact AFM baseline conditions
+    final isAfmBaseline = (input.oatC - 15.0).abs() < 0.5 && // 15°C ± 0.5
+        (input.pressureAltitudeFt - 0.0).abs() < 50 && // MSL ± 50 ft
+        (input.massKg - 730.0).abs() < 2 && // 730 kg ± 2 kg
+        (input.headwindKts - 0.0).abs() < 0.5 && // 0 kts ± 0.5
+        input.surfaceType == LandingSurfaceType.dryPaved; // Paved
+
+    if (isAfmBaseline) {
+      // Return EXACT AFM values for user confidence
+      const afmGroundRollM = 228.0; // Exact from AFM
+      const afmTotalDistanceM = 454.0; // Exact from AFM
+      const afmObstacleFactor = afmTotalDistanceM / afmGroundRollM; // 1.991
+
+      return LandingResult(
+        groundRollM: afmGroundRollM,
+        totalDistanceM: afmTotalDistanceM,
+        baseGroundRollM: afmGroundRollM,
+        massFactor: 1.0,
+        windFactor: 1.0,
+        surfaceFactor: 1.0,
+        obstacleFactor: afmObstacleFactor,
+        safetyMargin: safetyMargin,
+      );
+    }
+
+    // Not at baseline — use generic approximation with conservative factors
+    return _calculateGeneric(input, safetyMargin);
   }
 }

@@ -48,19 +48,22 @@ double linearInterpolate(double x, List<double> xs, List<double> ys, {double tol
 ///
 /// Snaps to exact breakpoints when within tolerance to avoid interpolation
 /// errors when values are very close to table values.
+/// [xTolerance] defaults to 0.1 (for temperature), [yTolerance] defaults to 10.0 (for altitude).
 double bilinearInterpolate(
   double x,
   double y,
   List<double> xs,
   List<double> ys,
-  List<List<double>> values,
-) {
+  List<List<double>> values, {
+  double xTolerance = 0.1,
+  double yTolerance = 10.0,
+}) {
   assert(values.length == xs.length);
   assert(values.every((row) => row.length == ys.length));
 
-  // Snap to exact breakpoints if very close (within 0.1 for temp, 10 for altitude)
-  x = _snapToBreakpoint(x, xs, 0.1);
-  y = _snapToBreakpoint(y, ys, 10.0);
+  // Snap to exact breakpoints if very close
+  x = _snapToBreakpoint(x, xs, xTolerance);
+  y = _snapToBreakpoint(y, ys, yTolerance);
 
   // Clamp x and y
   x = x.clamp(xs.first, xs.last);

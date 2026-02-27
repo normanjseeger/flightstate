@@ -42,24 +42,24 @@ void main() {
     ];
 
     test('corners', () {
-      expect(bilinearInterpolate(0, 0, xs, ys, values), 100.0);
-      expect(bilinearInterpolate(10, 0, xs, ys, values), 300.0);
-      expect(bilinearInterpolate(0, 10, xs, ys, values), 200.0);
-      expect(bilinearInterpolate(10, 10, xs, ys, values), 400.0);
+      expect(bilinearInterpolate(0, 0, xs, ys, values, xTolerance: 0.1, yTolerance: 0.1), 100.0);
+      expect(bilinearInterpolate(10, 0, xs, ys, values, xTolerance: 0.1, yTolerance: 0.1), 300.0);
+      expect(bilinearInterpolate(0, 10, xs, ys, values, xTolerance: 0.1, yTolerance: 0.1), 200.0);
+      expect(bilinearInterpolate(10, 10, xs, ys, values, xTolerance: 0.1, yTolerance: 0.1), 400.0);
     });
 
     test('center', () {
-      expect(bilinearInterpolate(5, 5, xs, ys, values), 250.0);
+      expect(bilinearInterpolate(5, 5, xs, ys, values, xTolerance: 0.1, yTolerance: 0.1), 250.0);
     });
 
     test('edge midpoints', () {
-      expect(bilinearInterpolate(5, 0, xs, ys, values), 200.0);
-      expect(bilinearInterpolate(0, 5, xs, ys, values), 150.0);
+      expect(bilinearInterpolate(5, 0, xs, ys, values, xTolerance: 0.1, yTolerance: 0.1), 200.0);
+      expect(bilinearInterpolate(0, 5, xs, ys, values, xTolerance: 0.1, yTolerance: 0.1), 150.0);
     });
 
     test('clamping', () {
-      expect(bilinearInterpolate(-5, -5, xs, ys, values), 100.0);
-      expect(bilinearInterpolate(15, 15, xs, ys, values), 400.0);
+      expect(bilinearInterpolate(-5, -5, xs, ys, values, xTolerance: 0.1, yTolerance: 0.1), 100.0);
+      expect(bilinearInterpolate(15, 15, xs, ys, values, xTolerance: 0.1, yTolerance: 0.1), 400.0);
     });
   });
 }
