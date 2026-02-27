@@ -144,13 +144,13 @@ class TakeoffCalculator {
   ) {
     final massLbs = kgToLbs(input.mass);
 
-    // Direct table lookup with weight interpolation
-    final grFt = data.getGroundRollFt(
+    // Direct table lookup with weight interpolation (F172N tables are in meters)
+    final grM = data.getGroundRollM(
       input.oat,
       input.pressureAltitude,
       massLbs,
     );
-    final tdFt = data.getTotalDistanceFt(
+    final tdM = data.getTotalDistanceM(
       input.oat,
       input.pressureAltitude,
       massLbs,
@@ -162,7 +162,7 @@ class TakeoffCalculator {
     // Surface correction
     final surfaceFactor = input.surfaceType.correctionFactor;
 
-    final baseGroundRollM = ftToM(grFt);
+    final baseGroundRollM = grM;
     final groundRollM = baseGroundRollM * windFactor * surfaceFactor;
 
     // For total distance, interpolate based on obstacle height
@@ -186,7 +186,7 @@ class TakeoffCalculator {
       );
     }
 
-    final baseTotalOverObstacleM = ftToM(tdFt);
+    final baseTotalOverObstacleM = tdM;
     final totalOverObstacleM = baseTotalOverObstacleM * windFactor * surfaceFactor;
     final t = (obstHeight / maxObstM).clamp(0.0, 1.0);
     final totalDistanceM =

@@ -109,14 +109,14 @@ class F172nTakeoffData extends AircraftPerformanceData {
     [405, 416, 428, 439, 451, 465, 479, 492, 507],
   ];
 
-  double getGroundRollFt(double oatC, double altFt, double massLbs) {
+  double getGroundRollM(double oatC, double altFt, double massLbs) {
     final gr2300 = bilinearInterpolate(oatC, altFt, _temperatures, _altitudes, _gr2300).toDouble();
     final gr2100 = bilinearInterpolate(oatC, altFt, _temperatures, _altitudes, _gr2100).toDouble();
     final gr1900 = bilinearInterpolate(oatC, altFt, _temperatures, _altitudes, _gr1900).toDouble();
     return linearInterpolate(massLbs, _weights, [gr1900, gr2100, gr2300], tolerance: 5.0);
   }
 
-  double getTotalDistanceFt(double oatC, double altFt, double massLbs) {
+  double getTotalDistanceM(double oatC, double altFt, double massLbs) {
     final td2300 = bilinearInterpolate(oatC, altFt, _temperatures, _altitudes, _td2300).toDouble();
     final td2100 = bilinearInterpolate(oatC, altFt, _temperatures, _altitudes, _td2100).toDouble();
     final td1900 = bilinearInterpolate(oatC, altFt, _temperatures, _altitudes, _td1900).toDouble();
@@ -125,7 +125,7 @@ class F172nTakeoffData extends AircraftPerformanceData {
 
   @override
   double getBaseGroundRoll(double oatC, double altFt) {
-    return ftToM(getGroundRollFt(oatC, altFt, _weights.last));
+    return getGroundRollM(oatC, altFt, _weights.last);
   }
 
   @override
@@ -148,19 +148,19 @@ class F172nTakeoffData extends AircraftPerformanceData {
     return 1.0 + t * (maxRatio - 1.0);
   }
 
-  double getLandingGroundRollFt(double oatC, double altFt, double massLbs) {
+  double getLandingGroundRollM(double oatC, double altFt, double massLbs) {
     final grAtMax = bilinearInterpolate(oatC, altFt, _temperatures, _altitudes, _landingGr1043).toDouble();
     return grAtMax * (massLbs / _weights.last);
   }
 
-  double getLandingTotalDistanceFt(double oatC, double altFt, double massLbs) {
+  double getLandingTotalDistanceM(double oatC, double altFt, double massLbs) {
     final tdAtMax = bilinearInterpolate(oatC, altFt, _temperatures, _altitudes, _landingTd1043).toDouble();
     return tdAtMax * (massLbs / _weights.last);
   }
 
   @override
   double getBaseLandingGroundRoll(double oatC, double altFt) {
-    return ftToM(getLandingGroundRollFt(oatC, altFt, _weights.last));
+    return getLandingGroundRollM(oatC, altFt, _weights.last);
   }
 
   @override

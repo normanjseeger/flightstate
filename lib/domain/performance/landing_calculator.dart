@@ -170,13 +170,13 @@ class LandingCalculator {
   ) {
     final massLbs = kgToLbs(input.massKg);
 
-    // Direct table lookup with weight interpolation
-    final grFt = data.getLandingGroundRollFt(
+    // Direct table lookup with weight interpolation (F172N tables are in meters)
+    final grM = data.getLandingGroundRollM(
       input.oatC,
       input.pressureAltitudeFt,
       massLbs,
     );
-    final tdFt = data.getLandingTotalDistanceFt(
+    final tdM = data.getLandingTotalDistanceM(
       input.oatC,
       input.pressureAltitudeFt,
       massLbs,
@@ -188,10 +188,10 @@ class LandingCalculator {
     // Surface correction
     final surfaceFactor = input.surfaceType.correctionFactor;
 
-    final baseGroundRollM = ftToM(grFt);
+    final baseGroundRollM = grM;
     final groundRollM = baseGroundRollM * windFactor * surfaceFactor;
 
-    final baseTotalDistanceM = ftToM(tdFt);
+    final baseTotalDistanceM = tdM;
     final totalDistanceM = baseTotalDistanceM * windFactor * surfaceFactor;
 
     // Effective obstacle factor for display
