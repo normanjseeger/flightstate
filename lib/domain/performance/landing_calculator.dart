@@ -5,6 +5,7 @@ import 'package:flightstate/core/math/unit_conversion.dart';
 import 'package:flightstate/data/aircraft/aircraft_performance_data.dart';
 import 'package:flightstate/data/aircraft/c172p/c172p_takeoff_data.dart';
 import 'package:flightstate/data/aircraft/dv20/dv20_takeoff_data.dart';
+import 'package:flightstate/data/aircraft/f172n/f172n_takeoff_data.dart';
 import 'package:flightstate/domain/models/landing_input.dart';
 import 'package:flightstate/domain/models/landing_result.dart';
 import 'package:flightstate/domain/models/landing_surface_type.dart';
@@ -23,6 +24,11 @@ class LandingCalculator {
     // DV20 has limited AFM data — use exact values at baseline, approximations elsewhere
     if (data is Dv20TakeoffData) {
       return _calculateDv20(input, data as Dv20TakeoffData, safetyMargin);
+    }
+
+    // F172N has direct weight-interpolated landing tables
+    if (data is F172nTakeoffData) {
+      return _calculateF172n(input, data as F172nTakeoffData, safetyMargin);
     }
 
     return _calculateGeneric(input, safetyMargin);
@@ -154,5 +160,52 @@ class LandingCalculator {
 
     // Not at baseline — use generic approximation with conservative factors
     return _calculateGeneric(input, safetyMargin);
+  }
+
+  /// F172N-specific: interpolate directly from landing tables.
+  LandingResult _calculateF172n(
+    LandingInput input,
+    F172nTakeoffData data,
+    double safetyMargin,
+  ) {
+    final massLbs = kgToLbs(input.massKg);
+
+    // Direct table lookup with weight interpolation
+    final grFt = data.getLandingGroundRollFt(
+      input.oatC,
+      input.pressureAltitudeFt,
+      massLbs,
+    );
+    final tdFt = data.getLandingTotalDistanceFt(
+      input.oatC,
+      input.pressureAltitudeFt,
+      massLbs,
+    );
+
+    // Wind correction
+    final windFactor = data.getLandingWindFactor(input.headwindKts);
+
+    // Surface correction
+    final surfaceFactor = input.surfaceType.correctionFactor;
+
+    final baseGroundRollM = ftToM(grFt);
+    final groundRollM = baseGroundRollM * windFactor * surfaceFactor;
+
+    final baseTotalDistanceM = ftToM(tdFt);
+    final totalDistanceM = baseTotalDistanceM * windFactor * surfaceFactor;
+
+    // Effective obstacle factor for display
+    final obstacleFactor = baseGroundRollM > 0 ? baseTotalDistanceM / baseGroundRollM : 1.0;
+
+    return LandingResult(
+      groundRollM: groundRollM,
+      totalDistanceM: totalDistanceM,
+      baseGroundRollM: baseGroundRollM,
+      massFactor: 1.0, // built into table lookup
+      windFactor: windFactor,
+      surfaceFactor: surfaceFactor,
+      obstacleFactor: obstacleFactor,
+      safetyMargin: safetyMargin,
+    );
   }
 }
