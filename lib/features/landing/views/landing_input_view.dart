@@ -4,59 +4,17 @@ import 'package:flightstate/core/math/unit_conversion.dart';
 import 'package:flightstate/core/models/aircraft_type.dart';
 import 'package:flightstate/core/widgets/afm_remarks_panel.dart';
 import 'package:flightstate/core/widgets/editable_slider.dart';
-import 'package:flightstate/data/aircraft/aircraft_registry.dart';
 import 'package:flightstate/domain/models/landing_surface_type.dart';
 import 'package:flightstate/features/landing/viewmodels/landing_viewmodel.dart';
 import 'package:flightstate/features/settings/viewmodels/settings_viewmodel.dart';
-import 'package:flightstate/features/settings/views/settings_view.dart';
 
 class LandingInputView extends StatelessWidget {
   const LandingInputView({super.key});
 
-  static const String _appIconPath = 'assets/images/flightStateIcon.png';
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(6),
-                child: Image.asset(
-                  _appIconPath,
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            const Text('FlightState'),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings, color: Colors.white70),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const SettingsView(),
-                ),
-              );
-            },
-            tooltip: 'Settings',
-          ),
-        ],
-      ),
-      body: Consumer2<LandingViewModel, SettingsViewModel>(
+    return Consumer2<LandingViewModel, SettingsViewModel>(
         builder: (context, vm, settingsVm, _) {
           final useImperial = settingsVm.useImperial;
           // Recalculate if safety margin changed
@@ -68,28 +26,21 @@ class LandingInputView extends StatelessWidget {
           return ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            // 1. Aircraft Selection
-            _buildSectionHeader(context, 'Aircraft', Icons.airplanemode_active),
-            const SizedBox(height: 8),
-            _buildAircraftCard(context, vm),
-
-            const SizedBox(height: 20),
-
-            // 2. Conditions
+            // Conditions
             _buildSectionHeader(context, 'Conditions', Icons.tune),
             const SizedBox(height: 8),
             _buildConditionsCard(context, vm, useImperial),
 
             const SizedBox(height: 20),
 
-            // 3. Runway Surface / Condition
+            // Runway Surface / Condition
             _buildSectionHeader(context, 'Runway Surface / Condition', Icons.wb_sunny),
             const SizedBox(height: 8),
             _buildSurfaceCard(context, vm),
 
             const SizedBox(height: 20),
 
-            // 4. Results (at the end)
+            // Results
             _buildSectionHeader(context, 'Landing Performance', Icons.flight_land),
 
             // Warning for DV20 (limited AFM data)
@@ -171,8 +122,7 @@ class LandingInputView extends StatelessWidget {
           ],
         );
         },
-      ),
-    );
+      );
   }
 
   Widget _buildSectionHeader(BuildContext context, String title, IconData icon) {
@@ -189,45 +139,6 @@ class LandingInputView extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildAircraftCard(BuildContext context, LandingViewModel vm) {
-    final theme = Theme.of(context);
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Select Aircraft',
-              style: theme.textTheme.bodyLarge,
-            ),
-            DropdownButton<AircraftType>(
-              value: vm.aircraftType,
-              underline: const SizedBox(),
-              onChanged: (v) {
-                if (v != null) vm.setAircraftType(v);
-              },
-              items: AircraftRegistry.supportedAircraft
-                  .map(
-                    (a) => DropdownMenuItem(
-                      value: a,
-                      child: Text(
-                        a.label,
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  )
-                  .toList(),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -272,7 +183,7 @@ class LandingInputView extends StatelessWidget {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: Image.asset(
-                      _appIconPath,
+                      'assets/images/flightStateIcon.png',
                       fit: BoxFit.cover,
                     ),
                   ),

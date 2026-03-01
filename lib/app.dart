@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flightstate/core/models/aircraft_type.dart';
+import 'package:flightstate/core/models/app_page.dart';
+import 'package:flightstate/data/aircraft/aircraft_registry.dart';
 import 'package:flightstate/features/takeoff/views/takeoff_input_view.dart';
 import 'package:flightstate/features/takeoff/viewmodels/takeoff_viewmodel.dart';
 import 'package:flightstate/features/landing/views/landing_input_view.dart';
 import 'package:flightstate/features/landing/viewmodels/landing_viewmodel.dart';
+import 'package:flightstate/features/flight_times/views/flight_times_view.dart';
+import 'package:flightstate/features/flight_times/viewmodels/flight_times_viewmodel.dart';
 import 'package:flightstate/features/settings/viewmodels/settings_viewmodel.dart';
 import 'package:flightstate/features/settings/views/settings_view.dart';
 
@@ -15,10 +20,6 @@ class FlightStateApp extends StatefulWidget {
 }
 
 class _FlightStateAppState extends State<FlightStateApp> {
-  int _selectedIndex = 0;
-
-  static const String _appIconPath = 'assets/images/flightStateIcon.png';
-
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
@@ -26,6 +27,7 @@ class _FlightStateAppState extends State<FlightStateApp> {
         ChangeNotifierProvider(create: (_) => SettingsViewModel()..loadSettings()),
         ChangeNotifierProvider(create: (_) => TakeoffViewModel()),
         ChangeNotifierProvider(create: (_) => LandingViewModel()),
+        ChangeNotifierProvider(create: (_) => FlightTimesViewModel()),
       ],
       child: MaterialApp(
         title: 'FlightState',
@@ -33,7 +35,7 @@ class _FlightStateAppState extends State<FlightStateApp> {
         theme: _buildLightTheme(),
         darkTheme: _buildDarkTheme(),
         themeMode: ThemeMode.system,
-        home: _MainScreen(appIconPath: _appIconPath),
+        home: const _MainScreen(),
       ),
     );
   }
@@ -58,7 +60,7 @@ class _FlightStateAppState extends State<FlightStateApp> {
       useMaterial3: true,
       colorScheme: colorScheme,
       fontFamily: 'Roboto',
-      
+
       // AppBar styling
       appBarTheme: AppBarTheme(
         backgroundColor: _primaryColor,
@@ -71,7 +73,7 @@ class _FlightStateAppState extends State<FlightStateApp> {
           color: Colors.white,
         ),
       ),
-      
+
       // Card styling
       cardTheme: CardThemeData(
         elevation: 2,
@@ -80,7 +82,7 @@ class _FlightStateAppState extends State<FlightStateApp> {
         ),
         color: Colors.white,
       ),
-      
+
       // Input/Slider styling
       sliderTheme: SliderThemeData(
         activeTrackColor: _primaryColor,
@@ -93,7 +95,7 @@ class _FlightStateAppState extends State<FlightStateApp> {
           fontWeight: FontWeight.w500,
         ),
       ),
-      
+
       // Dropdown styling
       dropdownMenuTheme: DropdownMenuThemeData(
         inputDecorationTheme: InputDecorationTheme(
@@ -103,7 +105,7 @@ class _FlightStateAppState extends State<FlightStateApp> {
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         ),
       ),
-      
+
       // Text styling
       textTheme: const TextTheme(
         headlineLarge: TextStyle(
@@ -139,7 +141,7 @@ class _FlightStateAppState extends State<FlightStateApp> {
           fontWeight: FontWeight.w500,
         ),
       ),
-      
+
       // Elevated button styling
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -152,7 +154,7 @@ class _FlightStateAppState extends State<FlightStateApp> {
           ),
         ),
       ),
-      
+
       // Icon theme
       iconTheme: const IconThemeData(
         color: _primaryColor,
@@ -174,7 +176,7 @@ class _FlightStateAppState extends State<FlightStateApp> {
       useMaterial3: true,
       colorScheme: colorScheme,
       fontFamily: 'Roboto',
-      
+
       // AppBar styling
       appBarTheme: const AppBarTheme(
         backgroundColor: Color(0xFF1E1E1E),
@@ -187,7 +189,7 @@ class _FlightStateAppState extends State<FlightStateApp> {
           color: Colors.white,
         ),
       ),
-      
+
       // Card styling
       cardTheme: CardThemeData(
         elevation: 2,
@@ -196,7 +198,7 @@ class _FlightStateAppState extends State<FlightStateApp> {
         ),
         color: const Color(0xFF2D2D2D),
       ),
-      
+
       // Input/Slider styling
       sliderTheme: SliderThemeData(
         activeTrackColor: _secondaryColor,
@@ -209,7 +211,7 @@ class _FlightStateAppState extends State<FlightStateApp> {
           fontWeight: FontWeight.w500,
         ),
       ),
-      
+
       // Text styling
       textTheme: const TextTheme(
         headlineLarge: TextStyle(
@@ -245,7 +247,7 @@ class _FlightStateAppState extends State<FlightStateApp> {
           fontWeight: FontWeight.w500,
         ),
       ),
-      
+
       // Elevated button styling
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -258,7 +260,7 @@ class _FlightStateAppState extends State<FlightStateApp> {
           ),
         ),
       ),
-      
+
       // Icon theme
       iconTheme: const IconThemeData(
         color: _secondaryColor,
@@ -269,36 +271,22 @@ class _FlightStateAppState extends State<FlightStateApp> {
 }
 
 class _MainScreen extends StatefulWidget {
-  final String appIconPath;
-
-  const _MainScreen({required this.appIconPath});
+  const _MainScreen();
 
   @override
   State<_MainScreen> createState() => _MainScreenState();
 }
 
 class _MainScreenState extends State<_MainScreen> {
-  int _selectedIndex = 0;
+  static const String _appIconPath = 'assets/images/flightStateIcon.png';
 
-  final List<Widget> _screens = const [
-    TakeoffInputView(),
-    LandingInputView(),
-  ];
+  AppPage _selectedPage = AppPage.takeoff;
 
-  void _onItemTapped(int index) {
-    // Sync aircraft type between views when switching tabs
+  void _onAircraftChanged(AircraftType type) {
     final takeoffVm = context.read<TakeoffViewModel>();
     final landingVm = context.read<LandingViewModel>();
-    if (index == 1) {
-      // Switching to Landing — sync from Takeoff
-      landingVm.setAircraftType(takeoffVm.aircraftType);
-    } else if (index == 0) {
-      // Switching to Takeoff — sync from Landing
-      takeoffVm.setAircraftType(landingVm.aircraftType);
-    }
-    setState(() {
-      _selectedIndex = index;
-    });
+    takeoffVm.setAircraftType(type);
+    landingVm.setAircraftType(type);
   }
 
   void _openSettings() {
@@ -309,24 +297,116 @@ class _MainScreenState extends State<_MainScreen> {
     );
   }
 
+  Widget _buildPageContent() {
+    switch (_selectedPage) {
+      case AppPage.takeoff:
+        return const TakeoffInputView();
+      case AppPage.landing:
+        return const LandingInputView();
+      case AppPage.flightTimes:
+        return const FlightTimesView();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final takeoffVm = context.watch<TakeoffViewModel>();
+
     return Scaffold(
-      body: _screens[_selectedIndex],
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: _onItemTapped,
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.flight_takeoff),
-            selectedIcon: Icon(Icons.flight_takeoff, color: Colors.blue),
-            label: 'Takeoff',
+      appBar: AppBar(
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: Image.asset(
+                  _appIconPath,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Text('FlightState'),
+          ],
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings, color: Colors.white70),
+            onPressed: _openSettings,
+            tooltip: 'Settings',
           ),
-          NavigationDestination(
-            icon: Icon(Icons.flight_land),
-            selectedIcon: Icon(Icons.flight_land, color: Colors.blue),
-            label: 'Landing',
+        ],
+      ),
+      body: Column(
+        children: [
+          // Shared aircraft dropdown
+          Card(
+            margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Aircraft',
+                    style: theme.textTheme.bodyLarge,
+                  ),
+                  DropdownButton<AircraftType>(
+                    value: takeoffVm.aircraftType,
+                    underline: const SizedBox(),
+                    onChanged: (v) {
+                      if (v != null) _onAircraftChanged(v);
+                    },
+                    items: AircraftRegistry.supportedAircraft
+                        .map(
+                          (a) => DropdownMenuItem(
+                            value: a,
+                            child: Text(
+                              a.label,
+                              style: theme.textTheme.bodyLarge?.copyWith(
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ],
+              ),
+            ),
           ),
+
+          // Page selector
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+            child: SegmentedButton<AppPage>(
+              segments: AppPage.values
+                  .map(
+                    (page) => ButtonSegment(
+                      value: page,
+                      label: Text(page.label),
+                      icon: Icon(page.icon),
+                    ),
+                  )
+                  .toList(),
+              selected: {_selectedPage},
+              onSelectionChanged: (set) {
+                setState(() {
+                  _selectedPage = set.first;
+                });
+              },
+            ),
+          ),
+
+          // Active page content
+          Expanded(child: _buildPageContent()),
         ],
       ),
     );

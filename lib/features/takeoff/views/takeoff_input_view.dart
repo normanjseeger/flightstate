@@ -1,63 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flightstate/core/math/unit_conversion.dart';
-import 'package:flightstate/core/models/aircraft_type.dart';
 import 'package:flightstate/core/widgets/afm_remarks_panel.dart';
 import 'package:flightstate/core/widgets/editable_slider.dart';
-import 'package:flightstate/data/aircraft/aircraft_registry.dart';
 import 'package:flightstate/features/takeoff/viewmodels/takeoff_viewmodel.dart';
 import 'package:flightstate/features/settings/viewmodels/settings_viewmodel.dart';
-import 'package:flightstate/features/settings/views/settings_view.dart';
 
 class TakeoffInputView extends StatelessWidget {
   const TakeoffInputView({super.key});
 
-  // App icon asset
-  static const String _appIconPath = 'assets/images/flightStateIcon.png';
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Custom app icon in AppBar
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(6),
-                child: Image.asset(
-                  _appIconPath,
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            const Text('FlightState'),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings, color: Colors.white70),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const SettingsView(),
-                ),
-              );
-            },
-            tooltip: 'Settings',
-          ),
-        ],
-      ),
-      body: Consumer2<TakeoffViewModel, SettingsViewModel>(
+    return Consumer2<TakeoffViewModel, SettingsViewModel>(
         builder: (context, vm, settingsVm, _) {
           final useImperial = settingsVm.useImperial;
           // Recalculate if safety margin changed
@@ -69,28 +24,21 @@ class TakeoffInputView extends StatelessWidget {
           return ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            // 1. Aircraft Selection Section
-            _buildSectionHeader(context, 'Aircraft', Icons.airplanemode_active),
-            const SizedBox(height: 8),
-            _buildAircraftCard(context, vm),
-
-            const SizedBox(height: 20),
-
-            // 2. Conditions Section
+            // Conditions Section
             _buildSectionHeader(context, 'Conditions', Icons.tune),
             const SizedBox(height: 8),
             _buildConditionsCard(context, vm, useImperial),
 
             const SizedBox(height: 20),
 
-            // 3. Runway Surface / Condition
+            // Runway Surface / Condition
             _buildSectionHeader(context, 'Runway Surface / Condition', Icons.wb_sunny),
             const SizedBox(height: 8),
             _buildSurfaceCard(context, vm),
 
             const SizedBox(height: 20),
 
-            // 4. Results Section (at the end)
+            // Results Section
             _buildSectionHeader(context, 'Takeoff Performance', Icons.speed),
             const SizedBox(height: 8),
             _buildResultsCard(context, vm, useImperial),
@@ -138,8 +86,7 @@ class TakeoffInputView extends StatelessWidget {
           ],
         );
         },
-      ),
-    );
+      );
   }
 
   Widget _buildSectionHeader(BuildContext context, String title, IconData icon) {
@@ -156,45 +103,6 @@ class TakeoffInputView extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildAircraftCard(BuildContext context, TakeoffViewModel vm) {
-    final theme = Theme.of(context);
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Select Aircraft',
-              style: theme.textTheme.bodyLarge,
-            ),
-            DropdownButton<AircraftType>(
-              value: vm.aircraftType,
-              underline: const SizedBox(),
-              onChanged: (v) {
-                if (v != null) vm.setAircraftType(v);
-              },
-              items: AircraftRegistry.supportedAircraft
-                  .map(
-                    (a) => DropdownMenuItem(
-                      value: a,
-                      child: Text(
-                        a.label,
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  )
-                  .toList(),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -240,7 +148,7 @@ class TakeoffInputView extends StatelessWidget {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: Image.asset(
-                      _appIconPath,
+                      'assets/images/flightStateIcon.png',
                       fit: BoxFit.cover,
                     ),
                   ),
