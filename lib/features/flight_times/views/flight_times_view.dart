@@ -346,7 +346,7 @@ class FlightTimesView extends StatelessWidget {
                   Expanded(
                     flex: 2,
                     child: Text(
-                      'UTC',
+                      'UTC time',
                       textAlign: TextAlign.center,
                       style: theme.textTheme.labelLarge?.copyWith(
                         color: theme.colorScheme.primary,
@@ -356,7 +356,7 @@ class FlightTimesView extends StatelessWidget {
                   Expanded(
                     flex: 2,
                     child: Text(
-                      'Local',
+                      'Local time',
                       textAlign: TextAlign.center,
                       style: theme.textTheme.labelLarge?.copyWith(
                         color: theme.colorScheme.secondary,
@@ -407,6 +407,13 @@ class FlightTimesView extends StatelessWidget {
             style: theme.textTheme.headlineMedium?.copyWith(
               fontFeatures: const [FontFeature.tabularFigures()],
               fontWeight: FontWeight.bold,
+            ),
+          ),
+          Text(
+            'hours:minutes',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant.withAlpha(179),
+              fontSize: 10,
             ),
           ),
           const SizedBox(height: 4),

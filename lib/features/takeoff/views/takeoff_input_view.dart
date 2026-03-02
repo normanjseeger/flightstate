@@ -18,7 +18,10 @@ class TakeoffInputView extends StatelessWidget {
           // Recalculate if safety margin changed
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (vm.result.safetyMargin != settingsVm.takeoffSafetyMargin) {
-              vm.recalculateWithSafetyMargin(settingsVm.takeoffSafetyMargin);
+              vm.recalculateWithSafetyMargin(
+                settingsVm.takeoffSafetyMargin,
+                slopeCorrectionPerPercent: settingsVm.takeoffUpslopeCorrection,
+              );
             }
           });
           return ListView(
@@ -269,7 +272,7 @@ class TakeoffInputView extends StatelessWidget {
     final parts = <String>[];
 
     if (isGroundRoll) {
-      // Ground roll: base × mass × wind × surface × safety = result
+      // Ground roll: base × mass × wind × surface × slope × safety = result
       parts.add('POH base: $baseVal $unit');
       if (r.massFactor != 1.0) {
         parts.add('mass: ×${r.massFactor.toStringAsFixed(2)}');
@@ -279,6 +282,9 @@ class TakeoffInputView extends StatelessWidget {
       }
       if (r.surfaceFactor != 1.0) {
         parts.add('surface: ×${r.surfaceFactor.toStringAsFixed(2)}');
+      }
+      if (r.slopeFactor != 1.0) {
+        parts.add('slope: ×${r.slopeFactor.toStringAsFixed(2)}');
       }
       if (r.safetyMargin != 1.0) {
         parts.add('safety: ×${r.safetyMargin.toStringAsFixed(2)}');
@@ -400,6 +406,23 @@ class TakeoffInputView extends StatelessWidget {
                     : null,
               ),
             ],
+
+            const SizedBox(height: 16),
+
+            // Runway Slope
+            EditableSlider(
+              icon: Icons.terrain,
+              label: 'Runway Slope',
+              value: vm.slopePercentage,
+              min: vm.slopeMin,
+              max: vm.slopeMax,
+              divisions: ((vm.slopeMax - vm.slopeMin) * 10).round(),
+              unit: '%',
+              displayValue: vm.slopePercentage,
+              decimals: 1,
+              subtitle: 'Negative = downslope, Positive = upslope',
+              onChanged: vm.setSlopePercentage,
+            ),
           ],
         ),
       ),
@@ -429,7 +452,7 @@ class TakeoffInputView extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: vm.supportedSurfaces.map((surface) {
-                final isSelected = vm.surfaceType == surface;
+                final isSelected = vm.customSurfaceFactor == 0 && vm.surfaceType == surface;
                 final factor = surface.correctionFactor;
                 return ChoiceChip(
                   label: Text(
@@ -462,25 +485,26 @@ class TakeoffInputView extends StatelessWidget {
                   label: Text(
                     'Wet Paved (${settingsVm.takeoffWetPavedCorrection.toStringAsFixed(2)}x)',
                   ),
-                  selected: false,
-                  onSelected: (_) {},
+                  selected: vm.customSurfaceFactor == settingsVm.takeoffWetPavedCorrection,
+                  onSelected: (_) => vm.setCustomSurfaceFactor(settingsVm.takeoffWetPavedCorrection),
                 ),
                 ChoiceChip(
                   label: Text(
                     'Wet Grass (${settingsVm.takeoffWetGrassCorrection.toStringAsFixed(2)}x)',
                   ),
-                  selected: false,
-                  onSelected: (_) {},
+                  selected: vm.customSurfaceFactor == settingsVm.takeoffWetGrassCorrection,
+                  onSelected: (_) => vm.setCustomSurfaceFactor(settingsVm.takeoffWetGrassCorrection),
                 ),
                 ChoiceChip(
                   label: Text(
                     'Dry Grass (${settingsVm.takeoffDryGrassCorrection.toStringAsFixed(2)}x)',
                   ),
-                  selected: false,
-                  onSelected: (_) {},
+                  selected: vm.customSurfaceFactor == settingsVm.takeoffDryGrassCorrection,
+                  onSelected: (_) => vm.setCustomSurfaceFactor(settingsVm.takeoffDryGrassCorrection),
                 ),
               ],
             ),
+
           ],
         ),
       ),

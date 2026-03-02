@@ -48,11 +48,16 @@ class LandingCalculator {
     // Apply wind correction
     double windFactor = data.getLandingWindFactor(input.headwindKts);
 
-    // Apply surface correction (wet paved = +10%, dry grass = +45%)
-    double surfaceFactor = input.surfaceType.correctionFactor;
+    // Apply surface correction (custom overrides enum if set)
+    double surfaceFactor = input.customSurfaceFactor > 0
+        ? input.customSurfaceFactor
+        : input.surfaceType.correctionFactor;
+
+    // Slope correction: configurable % change per 1% slope (from settings)
+    double slopeFactor = 1.0 + (input.slopePercentage * input.slopeCorrectionPerPercent);
 
     // Calculate ground roll (before safety margin)
-    double groundRoll = baseGroundRoll * massFactor * windFactor * surfaceFactor;
+    double groundRoll = baseGroundRoll * massFactor * windFactor * surfaceFactor * slopeFactor;
 
     // Apply obstacle factor (fixed at 15m/50ft obstacle)
     double obstacleFactor = data.getLandingObstacleFactor(15.0); // Always 15m/50ft
@@ -67,6 +72,7 @@ class LandingCalculator {
       massFactor: massFactor,
       windFactor: windFactor,
       surfaceFactor: surfaceFactor,
+      slopeFactor: slopeFactor,
       obstacleFactor: obstacleFactor,
       safetyMargin: safetyMargin,
     );
@@ -95,14 +101,19 @@ class LandingCalculator {
     // Wind correction
     final windFactor = data.getLandingWindFactor(input.headwindKts);
 
-    // Surface correction
-    final surfaceFactor = input.surfaceType.correctionFactor;
+    // Surface correction (custom overrides enum if set)
+    final surfaceFactor = input.customSurfaceFactor > 0
+        ? input.customSurfaceFactor
+        : input.surfaceType.correctionFactor;
+
+    // Slope correction: configurable % change per 1% slope (from settings)
+    final slopeFactor = 1.0 + (input.slopePercentage * input.slopeCorrectionPerPercent);
 
     final baseGroundRollM = ftToM(grFt);
-    final groundRollM = baseGroundRollM * windFactor * surfaceFactor;
+    final groundRollM = baseGroundRollM * windFactor * surfaceFactor * slopeFactor;
 
     final baseTotalDistanceM = ftToM(tdFt);
-    final totalDistanceM = baseTotalDistanceM * windFactor * surfaceFactor;
+    final totalDistanceM = baseTotalDistanceM * windFactor * surfaceFactor * slopeFactor;
 
     // Effective obstacle factor for display
     final obstacleFactor = baseGroundRollM > 0 ? baseTotalDistanceM / baseGroundRollM : 1.0;
@@ -114,6 +125,7 @@ class LandingCalculator {
       massFactor: 1.0, // built into table lookup
       windFactor: windFactor,
       surfaceFactor: surfaceFactor,
+      slopeFactor: slopeFactor,
       obstacleFactor: obstacleFactor,
       safetyMargin: safetyMargin,
     );
@@ -153,6 +165,7 @@ class LandingCalculator {
         massFactor: 1.0,
         windFactor: 1.0,
         surfaceFactor: 1.0,
+        slopeFactor: 1.0,
         obstacleFactor: afmObstacleFactor,
         safetyMargin: safetyMargin,
       );
@@ -185,14 +198,19 @@ class LandingCalculator {
     // Wind correction
     final windFactor = data.getLandingWindFactor(input.headwindKts);
 
-    // Surface correction
-    final surfaceFactor = input.surfaceType.correctionFactor;
+    // Surface correction (custom overrides enum if set)
+    final surfaceFactor = input.customSurfaceFactor > 0
+        ? input.customSurfaceFactor
+        : input.surfaceType.correctionFactor;
+
+    // Slope correction: configurable % change per 1% slope (from settings)
+    final slopeFactor = 1.0 + (input.slopePercentage * input.slopeCorrectionPerPercent);
 
     final baseGroundRollM = grM;
-    final groundRollM = baseGroundRollM * windFactor * surfaceFactor;
+    final groundRollM = baseGroundRollM * windFactor * surfaceFactor * slopeFactor;
 
     final baseTotalDistanceM = tdM;
-    final totalDistanceM = baseTotalDistanceM * windFactor * surfaceFactor;
+    final totalDistanceM = baseTotalDistanceM * windFactor * surfaceFactor * slopeFactor;
 
     // Effective obstacle factor for display
     final obstacleFactor = baseGroundRollM > 0 ? baseTotalDistanceM / baseGroundRollM : 1.0;
@@ -204,6 +222,7 @@ class LandingCalculator {
       massFactor: 1.0, // built into table lookup
       windFactor: windFactor,
       surfaceFactor: surfaceFactor,
+      slopeFactor: slopeFactor,
       obstacleFactor: obstacleFactor,
       safetyMargin: safetyMargin,
     );

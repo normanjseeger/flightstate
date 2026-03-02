@@ -18,6 +18,9 @@ class TakeoffResult {
   /// Surface correction factor applied
   final double surfaceFactor;
 
+  /// Slope correction factor applied
+  final double slopeFactor;
+
   /// Obstacle clearance factor applied (totalDistance / groundRoll)
   final double obstacleFactor;
 
@@ -31,6 +34,7 @@ class TakeoffResult {
     this.massFactor = 1.0,
     this.windFactor = 1.0,
     this.surfaceFactor = 1.0,
+    this.slopeFactor = 1.0,
     this.obstacleFactor = 1.0,
     this.safetyMargin = 1.0,
   });

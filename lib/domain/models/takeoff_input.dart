@@ -21,6 +21,15 @@ class TakeoffInput {
   /// Runway surface type
   final SurfaceType surfaceType;
 
+  /// Runway slope percentage (negative = downslope, positive = upslope)
+  final double slopePercentage;
+
+  /// Slope correction factor per 1% slope (e.g., 0.05 = 5% per 1%)
+  final double slopeCorrectionPerPercent;
+
+  /// Custom surface correction factor (0 = use enum factor, >0 = override)
+  final double customSurfaceFactor;
+
   const TakeoffInput({
     required this.oat,
     required this.pressureAltitude,
@@ -28,6 +37,9 @@ class TakeoffInput {
     required this.headwind,
     required this.obstacleHeight,
     this.surfaceType = SurfaceType.paved,
+    this.slopePercentage = 0.0,
+    this.slopeCorrectionPerPercent = 0.05,
+    this.customSurfaceFactor = 0.0,
   });
 
   /// Validates all inputs are within the aircraft's chart range.
@@ -57,6 +69,9 @@ class TakeoffInput {
     double? headwind,
     double? obstacleHeight,
     SurfaceType? surfaceType,
+    double? slopePercentage,
+    double? slopeCorrectionPerPercent,
+    double? customSurfaceFactor,
   }) {
     return TakeoffInput(
       oat: oat ?? this.oat,
@@ -65,6 +80,9 @@ class TakeoffInput {
       headwind: headwind ?? this.headwind,
       obstacleHeight: obstacleHeight ?? this.obstacleHeight,
       surfaceType: surfaceType ?? this.surfaceType,
+      slopePercentage: slopePercentage ?? this.slopePercentage,
+      slopeCorrectionPerPercent: slopeCorrectionPerPercent ?? this.slopeCorrectionPerPercent,
+      customSurfaceFactor: customSurfaceFactor ?? this.customSurfaceFactor,
     );
   }
 }

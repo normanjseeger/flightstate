@@ -20,7 +20,10 @@ class LandingInputView extends StatelessWidget {
           // Recalculate if safety margin changed
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (vm.result?.safetyMargin != settingsVm.landingSafetyMargin) {
-              vm.recalculateWithSafetyMargin(settingsVm.landingSafetyMargin);
+              vm.recalculateWithSafetyMargin(
+                settingsVm.landingSafetyMargin,
+                slopeCorrectionPerPercent: settingsVm.landingDownslopeCorrection,
+              );
             }
           });
           return ListView(
@@ -332,7 +335,7 @@ class LandingInputView extends StatelessWidget {
     final parts = <String>[];
 
     if (isGroundRoll) {
-      // Ground roll: base × mass × wind × surface × safety = result
+      // Ground roll: base × mass × wind × surface × slope × safety = result
       parts.add('POH base: $baseVal $unit');
       if (r.massFactor != 1.0) {
         parts.add('mass: ×${r.massFactor.toStringAsFixed(2)}');
@@ -342,6 +345,9 @@ class LandingInputView extends StatelessWidget {
       }
       if (r.surfaceFactor != 1.0) {
         parts.add('surface: ×${r.surfaceFactor.toStringAsFixed(2)}');
+      }
+      if (r.slopeFactor != 1.0) {
+        parts.add('slope: ×${r.slopeFactor.toStringAsFixed(2)}');
       }
       if (r.safetyMargin != 1.0) {
         parts.add('safety: ×${r.safetyMargin.toStringAsFixed(2)}');
@@ -440,6 +446,23 @@ class LandingInputView extends StatelessWidget {
               onChanged: vm.setHeadwind,
             ),
 
+            const SizedBox(height: 16),
+
+            // Runway Slope
+            EditableSlider(
+              icon: Icons.terrain,
+              label: 'Runway Slope',
+              value: vm.slopePercentage,
+              min: vm.slopeMin,
+              max: vm.slopeMax,
+              divisions: ((vm.slopeMax - vm.slopeMin) * 10).round(),
+              unit: '%',
+              displayValue: vm.slopePercentage,
+              decimals: 1,
+              subtitle: 'Negative = downslope, Positive = upslope',
+              onChanged: vm.setSlopePercentage,
+            ),
+
           ],
         ),
       ),
@@ -450,19 +473,13 @@ class LandingInputView extends StatelessWidget {
     final theme = Theme.of(context);
     final settingsVm = context.watch<SettingsViewModel>();
 
-    // POH surfaces: Dry Paved (baseline) and Dry Grass (per AFM notes)
-    final pohSurfaces = [
-      LandingSurfaceType.dryPaved,
-      LandingSurfaceType.dryGrass,
-    ];
-
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // POH Data section
+            // POH surfaces
             Text(
               'POH Data',
               style: theme.textTheme.bodySmall?.copyWith(
@@ -474,8 +491,8 @@ class LandingInputView extends StatelessWidget {
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: pohSurfaces.map((surface) {
-                final isSelected = vm.surfaceType == surface;
+              children: LandingSurfaceType.values.map((surface) {
+                final isSelected = vm.customSurfaceFactor == 0 && vm.surfaceType == surface;
                 final factor = surface.correctionFactor;
                 return ChoiceChip(
                   label: Text('${surface.label} (${factor.toStringAsFixed(2)}x)'),
@@ -502,29 +519,19 @@ class LandingInputView extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
-                // Wet Paved
                 ChoiceChip(
                   label: Text(
                     'Wet Paved (${settingsVm.landingWetPavedCorrection.toStringAsFixed(2)}x)',
                   ),
-                  selected: vm.surfaceType == LandingSurfaceType.wetPaved,
-                  onSelected: (_) => vm.setSurfaceType(LandingSurfaceType.wetPaved),
+                  selected: vm.customSurfaceFactor == settingsVm.landingWetPavedCorrection,
+                  onSelected: (_) => vm.setCustomSurfaceFactor(settingsVm.landingWetPavedCorrection),
                 ),
-                // Wet Grass
                 ChoiceChip(
                   label: Text(
                     'Wet Grass (${settingsVm.landingWetGrassCorrection.toStringAsFixed(2)}x)',
                   ),
-                  selected: false,
-                  onSelected: (_) {},
-                ),
-                // Downslope
-                ChoiceChip(
-                  label: Text(
-                    'Downslope (${settingsVm.landingDownslopeCorrection.toStringAsFixed(2)}x)',
-                  ),
-                  selected: false,
-                  onSelected: (_) {},
+                  selected: vm.customSurfaceFactor == settingsVm.landingWetGrassCorrection,
+                  onSelected: (_) => vm.setCustomSurfaceFactor(settingsVm.landingWetGrassCorrection),
                 ),
               ],
             ),

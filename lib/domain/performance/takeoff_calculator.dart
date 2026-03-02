@@ -45,9 +45,15 @@ class TakeoffCalculator {
     final windFactor = data.getWindFactor(input.headwind);
     final windAdjusted = massAdjusted * windFactor;
 
-    // Surface correction
-    final surfaceFactor = input.surfaceType.correctionFactor;
-    final groundRoll = windAdjusted * surfaceFactor;
+    // Surface correction (custom overrides enum if set)
+    final surfaceFactor = input.customSurfaceFactor > 0
+        ? input.customSurfaceFactor
+        : input.surfaceType.correctionFactor;
+    final surfaceAdjusted = windAdjusted * surfaceFactor;
+
+    // Slope correction: configurable % change per 1% slope (from settings)
+    final slopeFactor = 1.0 + (input.slopePercentage * input.slopeCorrectionPerPercent);
+    final groundRoll = surfaceAdjusted * slopeFactor;
 
     // Panel 4: Obstacle clearance
     final obstacleFactor = data.getObstacleFactor(input.obstacleHeight);
@@ -60,6 +66,7 @@ class TakeoffCalculator {
       massFactor: massFactor,
       windFactor: windFactor,
       surfaceFactor: surfaceFactor,
+      slopeFactor: slopeFactor,
       obstacleFactor: obstacleFactor,
       safetyMargin: safetyMargin,
     );
@@ -88,11 +95,16 @@ class TakeoffCalculator {
     // Wind correction
     final windFactor = data.getWindFactor(input.headwind);
 
-    // Surface correction
-    final surfaceFactor = input.surfaceType.correctionFactor;
+    // Surface correction (custom overrides enum if set)
+    final surfaceFactor = input.customSurfaceFactor > 0
+        ? input.customSurfaceFactor
+        : input.surfaceType.correctionFactor;
+
+    // Slope correction: configurable % change per 1% slope (from settings)
+    final slopeFactor = 1.0 + (input.slopePercentage * input.slopeCorrectionPerPercent);
 
     final baseGroundRollM = ftToM(grFt);
-    final groundRollM = baseGroundRollM * windFactor * surfaceFactor;
+    final groundRollM = baseGroundRollM * windFactor * surfaceFactor * slopeFactor;
 
     // For total distance, interpolate based on obstacle height
     final maxObstM = ftToM(50);
@@ -110,13 +122,14 @@ class TakeoffCalculator {
         massFactor: 1.0, // built into table lookup
         windFactor: windFactor,
         surfaceFactor: surfaceFactor,
+        slopeFactor: slopeFactor,
         obstacleFactor: 1.0,
         safetyMargin: safetyMargin,
       );
     }
 
     final baseTotalOverObstacleM = ftToM(tdFt);
-    final totalOverObstacleM = baseTotalOverObstacleM * windFactor * surfaceFactor;
+    final totalOverObstacleM = baseTotalOverObstacleM * windFactor * surfaceFactor * slopeFactor;
     final t = (obstHeight / maxObstM).clamp(0.0, 1.0);
     final totalDistanceM =
         groundRollM + t * (totalOverObstacleM - groundRollM);
@@ -131,6 +144,7 @@ class TakeoffCalculator {
       massFactor: 1.0, // built into table lookup
       windFactor: windFactor,
       surfaceFactor: surfaceFactor,
+      slopeFactor: slopeFactor,
       obstacleFactor: obstacleFactor,
       safetyMargin: safetyMargin,
     );
@@ -159,11 +173,16 @@ class TakeoffCalculator {
     // Wind correction
     final windFactor = data.getWindFactor(input.headwind);
 
-    // Surface correction
-    final surfaceFactor = input.surfaceType.correctionFactor;
+    // Surface correction (custom overrides enum if set)
+    final surfaceFactor = input.customSurfaceFactor > 0
+        ? input.customSurfaceFactor
+        : input.surfaceType.correctionFactor;
+
+    // Slope correction: configurable % change per 1% slope (from settings)
+    final slopeFactor = 1.0 + (input.slopePercentage * input.slopeCorrectionPerPercent);
 
     final baseGroundRollM = grM;
-    final groundRollM = baseGroundRollM * windFactor * surfaceFactor;
+    final groundRollM = baseGroundRollM * windFactor * surfaceFactor * slopeFactor;
 
     // For total distance, interpolate based on obstacle height
     final maxObstM = ftToM(50);
@@ -181,13 +200,14 @@ class TakeoffCalculator {
         massFactor: 1.0, // built into table lookup
         windFactor: windFactor,
         surfaceFactor: surfaceFactor,
+        slopeFactor: slopeFactor,
         obstacleFactor: 1.0,
         safetyMargin: safetyMargin,
       );
     }
 
     final baseTotalOverObstacleM = tdM;
-    final totalOverObstacleM = baseTotalOverObstacleM * windFactor * surfaceFactor;
+    final totalOverObstacleM = baseTotalOverObstacleM * windFactor * surfaceFactor * slopeFactor;
     final t = (obstHeight / maxObstM).clamp(0.0, 1.0);
     final totalDistanceM =
         groundRollM + t * (totalOverObstacleM - groundRollM);
@@ -202,6 +222,7 @@ class TakeoffCalculator {
       massFactor: 1.0, // built into table lookup
       windFactor: windFactor,
       surfaceFactor: surfaceFactor,
+      slopeFactor: slopeFactor,
       obstacleFactor: obstacleFactor,
       safetyMargin: safetyMargin,
     );

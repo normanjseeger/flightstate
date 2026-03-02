@@ -19,6 +19,8 @@ class LandingViewModel extends ChangeNotifier {
   double _mass = lbsToKg(2400); // C172P max weight (2400 lbs ≈ 1088.62 kg)
   double _headwind = 0; // kts
   LandingSurfaceType _surfaceType = LandingSurfaceType.dryPaved;
+  double _slopePercentage = 0.0; // Runway slope: negative = downslope, positive = upslope
+  double _customSurfaceFactor = 0.0; // Custom surface correction (0 = use enum, >0 = use this value)
 
   // Fixed at 15m/50ft obstacle for landing
   static const double _obstacleHeight = 15.0;
@@ -35,6 +37,11 @@ class LandingViewModel extends ChangeNotifier {
   double get mass => _mass;
   double get headwind => _headwind;
   LandingSurfaceType get surfaceType => _surfaceType;
+  double get slopePercentage => _slopePercentage;
+  double get customSurfaceFactor => _customSurfaceFactor;
+
+  /// Effective surface correction factor (custom overrides enum if set)
+  double get effectiveSurfaceFactor => _customSurfaceFactor > 0 ? _customSurfaceFactor : _surfaceType.correctionFactor;
 
   // Result getter
   LandingResult? get result => _result;
@@ -61,6 +68,8 @@ class LandingViewModel extends ChangeNotifier {
   double get massMax => _aircraftData?.massMaxKg ?? 730;
   double get windMin => -10;
   double get windMax => 20;
+  double get slopeMin => -10.0; // -10% downslope
+  double get slopeMax => 10.0;  // +10% upslope
 
   LandingResult? _result;
 
@@ -110,11 +119,24 @@ class LandingViewModel extends ChangeNotifier {
 
   void setSurfaceType(LandingSurfaceType value) {
     _surfaceType = value;
+    _customSurfaceFactor = 0.0; // Clear custom when POH surface selected
     _calculate();
     notifyListeners();
   }
 
-  void _calculate({double safetyMargin = 1.43}) {
+  void setCustomSurfaceFactor(double factor) {
+    _customSurfaceFactor = factor;
+    _calculate();
+    notifyListeners();
+  }
+
+  void setSlopePercentage(double value) {
+    _slopePercentage = value;
+    _calculate();
+    notifyListeners();
+  }
+
+  void _calculate({double safetyMargin = 1.43, double slopeCorrectionPerPercent = 0.05}) {
     if (_aircraftData == null) return;
 
     final input = LandingInput(
@@ -124,6 +146,9 @@ class LandingViewModel extends ChangeNotifier {
       headwindKts: headwind,
       obstacleHeightM: _obstacleHeight,
       surfaceType: surfaceType,
+      slopePercentage: _slopePercentage,
+      slopeCorrectionPerPercent: slopeCorrectionPerPercent,
+      customSurfaceFactor: _customSurfaceFactor,
     );
 
     final calculator = LandingCalculator(_aircraftData!);
@@ -131,8 +156,8 @@ class LandingViewModel extends ChangeNotifier {
   }
 
   // Allow recalculation with updated safety margin
-  void recalculateWithSafetyMargin(double safetyMargin) {
-    _calculate(safetyMargin: safetyMargin);
+  void recalculateWithSafetyMargin(double safetyMargin, {double slopeCorrectionPerPercent = 0.05}) {
+    _calculate(safetyMargin: safetyMargin, slopeCorrectionPerPercent: slopeCorrectionPerPercent);
     notifyListeners();
   }
 }

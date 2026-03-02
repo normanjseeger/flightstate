@@ -5,7 +5,8 @@ import 'package:flutter/material.dart';
 enum LandingSurfaceType {
   dryPaved(label: 'Dry Paved', correctionFactor: 1.0, icon: Icons.straighten),
   wetPaved(label: 'Wet Paved', correctionFactor: 1.1, icon: Icons.water_drop),
-  dryGrass(label: 'Dry Grass', correctionFactor: 1.45, icon: Icons.grass);
+  dryGrass(label: 'Dry Grass', correctionFactor: 1.45, icon: Icons.grass),
+  wetGrass(label: 'Wet Grass', correctionFactor: 1.55, icon: Icons.water_drop);
 
   const LandingSurfaceType({
     required this.label,

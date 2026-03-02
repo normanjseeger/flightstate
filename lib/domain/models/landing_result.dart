@@ -9,6 +9,7 @@ class LandingResult {
   final double massFactor;
   final double windFactor;
   final double surfaceFactor;
+  final double slopeFactor;
   final double obstacleFactor;
   final double safetyMargin;
 
@@ -19,6 +20,7 @@ class LandingResult {
     this.massFactor = 1.0,
     this.windFactor = 1.0,
     this.surfaceFactor = 1.0,
+    this.slopeFactor = 1.0,
     this.obstacleFactor = 1.0,
     this.safetyMargin = 1.0,
   });

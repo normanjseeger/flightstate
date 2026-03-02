@@ -21,6 +21,8 @@ class TakeoffViewModel extends ChangeNotifier {
   double _headwind = 0;
   double _obstacleHeight = ftToM(50); // Exactly 50 ft (15.24 m) to match POH table
   SurfaceType _surfaceType = SurfaceType.paved;
+  double _slopePercentage = 0.0; // Runway slope: negative = downslope, positive = upslope
+  double _customSurfaceFactor = 0.0; // Custom surface correction (0 = use enum, >0 = use this value)
 
   // Getters
   AircraftType get aircraftType => _aircraftType;
@@ -31,6 +33,11 @@ class TakeoffViewModel extends ChangeNotifier {
   double get headwind => _headwind;
   double get obstacleHeight => _obstacleHeight;
   SurfaceType get surfaceType => _surfaceType;
+  double get slopePercentage => _slopePercentage;
+  double get customSurfaceFactor => _customSurfaceFactor;
+
+  /// Effective surface correction factor (custom overrides enum if set)
+  double get effectiveSurfaceFactor => _customSurfaceFactor > 0 ? _customSurfaceFactor : _surfaceType.correctionFactor;
 
   // Display values for imperial mode (provided by caller from SettingsViewModel)
   double displayOat(bool useImperial) => useImperial ? celsiusToFahrenheit(_oat) : _oat;
@@ -55,6 +62,8 @@ class TakeoffViewModel extends ChangeNotifier {
   double get windMax => _aircraftData.windMaxKts;
   double get obstMin => _aircraftData.obstMinM;
   double get obstMax => _aircraftData.obstMaxM;
+  double get slopeMin => -10.0; // -10% downslope
+  double get slopeMax => 10.0;  // +10% upslope
 
   /// Whether the obstacle slider should be shown (false if fixed).
   bool get showObstacleSlider => obstMin != obstMax;
@@ -68,7 +77,7 @@ class TakeoffViewModel extends ChangeNotifier {
   // Computed result
   TakeoffResult get result => _cachedResult ?? _calculateResult();
 
-  TakeoffResult _calculateResult({double safetyMargin = 1.33}) {
+  TakeoffResult _calculateResult({double safetyMargin = 1.33, double slopeCorrectionPerPercent = 0.05}) {
     final input = TakeoffInput(
       oat: _oat,
       pressureAltitude: _pressureAltitude,
@@ -76,15 +85,18 @@ class TakeoffViewModel extends ChangeNotifier {
       headwind: _headwind,
       obstacleHeight: _obstacleHeight,
       surfaceType: _surfaceType,
+      slopePercentage: _slopePercentage,
+      slopeCorrectionPerPercent: slopeCorrectionPerPercent,
+      customSurfaceFactor: _customSurfaceFactor,
     );
     _cachedSafetyMargin = safetyMargin;
     _cachedResult = TakeoffCalculator.calculate(input, _aircraftData, safetyMargin: safetyMargin);
     return _cachedResult!;
   }
 
-  void recalculateWithSafetyMargin(double safetyMargin) {
+  void recalculateWithSafetyMargin(double safetyMargin, {double slopeCorrectionPerPercent = 0.05}) {
     if (_cachedSafetyMargin != safetyMargin) {
-      _calculateResult(safetyMargin: safetyMargin);
+      _calculateResult(safetyMargin: safetyMargin, slopeCorrectionPerPercent: slopeCorrectionPerPercent);
       notifyListeners();
     }
   }
@@ -97,6 +109,8 @@ class TakeoffViewModel extends ChangeNotifier {
       headwind: _headwind,
       obstacleHeight: _obstacleHeight,
       surfaceType: _surfaceType,
+      slopePercentage: _slopePercentage,
+      customSurfaceFactor: _customSurfaceFactor,
     );
     return input.validate(_aircraftData);
   }
@@ -161,6 +175,19 @@ class TakeoffViewModel extends ChangeNotifier {
 
   void setSurfaceType(SurfaceType value) {
     _surfaceType = value;
+    _customSurfaceFactor = 0.0; // Clear custom when POH surface selected
+    _cachedResult = null; // Invalidate cache
+    notifyListeners();
+  }
+
+  void setCustomSurfaceFactor(double factor) {
+    _customSurfaceFactor = factor;
+    _cachedResult = null; // Invalidate cache
+    notifyListeners();
+  }
+
+  void setSlopePercentage(double value) {
+    _slopePercentage = value;
     _cachedResult = null; // Invalidate cache
     notifyListeners();
   }
