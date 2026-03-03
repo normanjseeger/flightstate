@@ -1,9 +1,36 @@
 import 'package:flutter/material.dart';
-
-/// Input mode for HOBBS/VUT values.
-enum InputMode { direct, readings }
+import '../../../core/services/voice_input_service.dart';
+import '../../../core/services/voice_command_parser.dart';
 
 class FlightTimesViewModel extends ChangeNotifier {
+  // Voice input services
+  late final VoiceInputService _voiceService;
+  late final VoiceCommandParser _parser;
+
+  // Voice input state
+  bool _isListening = false;
+  bool get isListening => _isListening;
+
+  bool _isVoiceAvailable = false;
+  bool get isVoiceAvailable => _isVoiceAvailable;
+
+  String? _voiceError;
+  String? get voiceError => _voiceError;
+
+  String _currentTranscription = '';
+  String get currentTranscription => _currentTranscription;
+
+  FlightTimesViewModel() {
+    _voiceService = VoiceInputService();
+    _parser = VoiceCommandParser();
+    _initializeVoice();
+  }
+
+  Future<void> _initializeVoice() async {
+    _isVoiceAvailable = await _voiceService.initialize();
+    notifyListeners();
+  }
+
   // Input mode toggle
   InputMode _inputMode = InputMode.direct;
   InputMode get inputMode => _inputMode;
@@ -152,5 +179,122 @@ class FlightTimesViewModel extends ChangeNotifier {
   /// Format TimeOfDay as HH:MM.
   static String formatTime(TimeOfDay time) {
     return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+  }
+
+  // --- Voice Input ---
+
+  /// Start voice input (begins listening)
+  Future<void> startVoiceInput() async {
+    _voiceError = null;
+    _currentTranscription = '';
+    _isListening = true;
+    notifyListeners();
+
+    try {
+      // Start listening with a callback to capture partial results
+      final success = await _voiceService.startListeningWithCallback(
+        onResult: (transcription) {
+          // Only update if we got actual content (filter out empty results)
+          if (transcription.trim().isNotEmpty) {
+            _currentTranscription = transcription;
+            _voiceError = null; // Clear any previous errors
+            notifyListeners(); // Update UI with partial results
+          }
+        },
+        onError: (error) {
+          _voiceError = error;
+          // Keep isListening = true so UI shows the error in the recording dialog
+          notifyListeners();
+        },
+      );
+
+      if (!success) {
+        _voiceError = 'Failed to start speech recognition. Please check microphone permissions in your browser and click Retry.';
+        // Keep isListening = true so UI shows the error with retry button
+        notifyListeners();
+      }
+    } catch (e) {
+      _voiceError = _mapErrorToUserMessage(e);
+      // Keep isListening = true so UI shows the error
+      notifyListeners();
+    }
+  }
+
+  /// Stop voice input and process the transcription
+  Future<void> stopVoiceInput() async {
+    if (!_isListening) return;
+
+    try {
+      // Stop listening
+      await _voiceService.stopListening();
+      _isListening = false;
+      notifyListeners();
+
+      // Process the transcription
+      if (_currentTranscription.isEmpty) {
+        _voiceError = 'No speech detected. Please try again.';
+        return;
+      }
+
+      final result = _parser.parse(_currentTranscription);
+
+      if (result.hasError) {
+        _voiceError = result.errorMessage;
+      } else {
+        _applyVoiceData(result.data!);
+      }
+    } catch (e) {
+      _voiceError = _mapErrorToUserMessage(e);
+    } finally {
+      notifyListeners();
+    }
+  }
+
+  /// Cancel voice input without processing
+  Future<void> cancelVoiceInput() async {
+    if (!_isListening) return;
+
+    await _voiceService.stopListening();
+    _isListening = false;
+    _currentTranscription = '';
+    notifyListeners();
+  }
+
+  /// Apply parsed voice data to the viewmodel
+  void _applyVoiceData(FlightTimesVoiceData data) {
+    // Auto-switch mode if detected
+    if (data.mode != null && data.mode != _inputMode) {
+      setInputMode(data.mode!);
+    }
+
+    // Apply values based on mode
+    if (data.mode == InputMode.direct) {
+      if (data.hobbsDiff != null) setHobbsDiff(data.hobbsDiff!);
+      if (data.vutDiff != null) setVutDiff(data.vutDiff!);
+    } else {
+      if (data.hobbsStart != null) setHobbsStart(data.hobbsStart!);
+      if (data.hobbsEnd != null) setHobbsEnd(data.hobbsEnd!);
+      if (data.vutStart != null) setVutStart(data.vutStart!);
+      if (data.vutEnd != null) setVutEnd(data.vutEnd!);
+    }
+
+    // Apply common values
+    if (data.blockOnUtc != null) setBlockOnUtc(data.blockOnUtc!);
+    if (data.taxiMinutes != null) setTaxiMinutes(data.taxiMinutes!);
+    if (data.utcOffsetHours != null) setUtcOffsetHours(data.utcOffsetHours!);
+  }
+
+  /// Map error to user-friendly message
+  String _mapErrorToUserMessage(dynamic error) {
+    if (error is VoiceInputException) {
+      return error.message;
+    }
+    return 'Voice input failed. Please try again.';
+  }
+
+  @override
+  void dispose() {
+    _voiceService.dispose();
+    super.dispose();
   }
 }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flightstate/features/flight_times/viewmodels/flight_times_viewmodel.dart';
+import 'package:flightstate/core/services/voice_command_parser.dart';
+import 'widgets/voice_input_dialog.dart';
 
 class FlightTimesView extends StatelessWidget {
   const FlightTimesView({super.key});
@@ -184,12 +186,58 @@ class FlightTimesView extends StatelessWidget {
   }
 
   Widget _buildHobbsVutCard(BuildContext context, FlightTimesViewModel vm) {
+    final theme = Theme.of(context);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: vm.inputMode == InputMode.direct
-            ? _buildDirectInputs(context, vm)
-            : _buildReadingsInputs(context, vm),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Voice Input Header (only show if available)
+            if (vm.isVoiceAvailable) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.mic, size: 20, color: theme.colorScheme.primary),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Voice Input',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.help_outline, size: 18),
+                        onPressed: () => _showVoiceHelpDialog(context),
+                        tooltip: 'Show voice command examples',
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ],
+                  ),
+                  FloatingActionButton.small(
+                    onPressed: vm.isListening ? null : () => _handleVoiceInput(context, vm),
+                    backgroundColor: vm.isListening
+                        ? Colors.red
+                        : theme.colorScheme.primary,
+                    tooltip: 'Start voice input',
+                    child: Icon(vm.isListening ? Icons.mic : Icons.mic_none),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 16),
+            ],
+
+            // Existing input fields
+            vm.inputMode == InputMode.direct
+                ? _buildDirectInputs(context, vm)
+                : _buildReadingsInputs(context, vm),
+          ],
+        ),
       ),
     );
   }
@@ -468,6 +516,146 @@ class FlightTimesView extends StatelessWidget {
                 fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Voice Input Methods
+
+  Future<void> _handleVoiceInput(BuildContext context, FlightTimesViewModel vm) async {
+    // Start listening
+    await vm.startVoiceInput();
+
+    if (!context.mounted) return;
+
+    // Show listening dialog - it will auto-close when done
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => VoiceInputDialog(viewModel: vm),
+    );
+
+    if (!context.mounted) return;
+
+    // Show result feedback
+    if (result == false) {
+      // User cancelled
+      return;
+    }
+
+    if (vm.voiceError != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(vm.voiceError!),
+          backgroundColor: Colors.red,
+          action: SnackBarAction(
+            label: 'Retry',
+            textColor: Colors.white,
+            onPressed: () => _handleVoiceInput(context, vm),
+          ),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Voice input applied successfully'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  void _showVoiceHelpDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Voice Input Guide'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.lightbulb, size: 16, color: Colors.blue),
+                        SizedBox(width: 6),
+                        Text('What Actually Works on Web:',
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    Text('Try saying NUMBERS instead of words:'),
+                    SizedBox(height: 4),
+                    Text('"Hobs 3.5, V U T 2.75, Block on 14 30"',
+                      style: TextStyle(fontFamily: 'monospace')),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text('How to Speak:', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              const Text('1. Say "Hobs" (pause) "3.5"'),
+              const SizedBox(height: 4),
+              const Text('2. Say "V U T" (spell it) (pause) "2.75"'),
+              const SizedBox(height: 4),
+              const Text('3. Say "Block on" (pause) "14 30"'),
+              const SizedBox(height: 16),
+              const Text('Alternative Words:', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              const Text('• Instead of "HOBBS" → say "Hobs" or "Hours"'),
+              const SizedBox(height: 4),
+              const Text('• Instead of "VUT" → spell it "V U T"'),
+              const SizedBox(height: 4),
+              const Text('• For time → say digits: "14 30" not "fourteen thirty"'),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange[50],
+                  border: Border.all(color: Colors.orange),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.warning_amber, size: 16, color: Colors.orange),
+                        SizedBox(width: 6),
+                        Text('Web Speech Limitations:',
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    Text('• May not recognize aviation terms'),
+                    SizedBox(height: 4),
+                    Text('• Works best with common English words'),
+                    SizedBox(height: 4),
+                    Text('• Use numbers instead of spelling them out'),
+                    SizedBox(height: 4),
+                    Text('• Watch transcription box to see what it hears'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Got it'),
           ),
         ],
       ),

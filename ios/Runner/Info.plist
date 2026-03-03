@@ -66,5 +66,9 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>FlightState needs microphone access to enable voice input for flight data.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>FlightState uses speech recognition to transcribe your voice input.</string>
 </dict>
 </plist>
