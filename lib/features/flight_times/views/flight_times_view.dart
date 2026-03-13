@@ -313,29 +313,11 @@ class FlightTimesView extends StatelessWidget {
     required double value,
     required ValueChanged<double> onChanged,
   }) {
-    // Use a TextEditingController to allow voice input to update the field
-    // while keeping focus during manual input
-    final controller = TextEditingController(
-      text: value == 0.0 ? '' : value.toString(),
-    );
-
-    return TextFormField(
-      controller: controller,
-      decoration: InputDecoration(
-        labelText: label,
-        helperText: subtitle,
-        border: const OutlineInputBorder(),
-        isDense: true,
-      ),
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      onChanged: (text) {
-        final parsed = double.tryParse(text);
-        if (parsed != null) {
-          onChanged(parsed);
-        } else if (text.isEmpty) {
-          onChanged(0.0);
-        }
-      },
+    return DecimalInputField(
+      label: label,
+      subtitle: subtitle,
+      value: value,
+      onChanged: onChanged,
     );
   }
 
@@ -843,6 +825,87 @@ class _VoiceInputDialogState extends State<_VoiceInputDialog> {
             ],
           ],
         );
+      },
+    );
+  }
+}
+
+/// Stateful widget for decimal input that properly manages TextEditingController
+/// to avoid cursor issues and maintain focus during typing.
+class DecimalInputField extends StatefulWidget {
+  final String label;
+  final String? subtitle;
+  final double value;
+  final ValueChanged<double> onChanged;
+
+  const DecimalInputField({
+    super.key,
+    required this.label,
+    this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  State<DecimalInputField> createState() => _DecimalInputFieldState();
+}
+
+class _DecimalInputFieldState extends State<DecimalInputField> {
+  late TextEditingController _controller;
+  bool _isInternalChange = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(
+      text: widget.value == 0.0 ? '' : widget.value.toString(),
+    );
+  }
+
+  @override
+  void didUpdateWidget(DecimalInputField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // Only update the controller if the value changed externally (e.g., from voice input)
+    // and not from user typing
+    if (!_isInternalChange && widget.value != oldWidget.value) {
+      final newText = widget.value == 0.0 ? '' : widget.value.toString();
+      if (_controller.text != newText) {
+        _controller.text = newText;
+        // Move cursor to end
+        _controller.selection = TextSelection.fromPosition(
+          TextPosition(offset: _controller.text.length),
+        );
+      }
+    }
+    _isInternalChange = false;
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: _controller,
+      decoration: InputDecoration(
+        labelText: widget.label,
+        helperText: widget.subtitle,
+        border: const OutlineInputBorder(),
+        isDense: true,
+      ),
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      onChanged: (text) {
+        _isInternalChange = true;
+        final parsed = double.tryParse(text);
+        if (parsed != null) {
+          widget.onChanged(parsed);
+        } else if (text.isEmpty) {
+          widget.onChanged(0.0);
+        }
       },
     );
   }
