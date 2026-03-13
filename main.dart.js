@@ -46680,7 +46680,7 @@ break
 case 3:s=2
 break
 case 6:p=9
-A.eu("DEBUG: Sending audio to Whisper API...")
+A.eu("DEBUG: Sending audio file to Whisper API...")
 s=12
 return A.F(J.aRf(m).mo(0,B.p1,new A.ap5()),$async$mq)
 case 12:i=b1
