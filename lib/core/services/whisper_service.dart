@@ -1,6 +1,9 @@
-import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'file_cleanup_stub.dart'
+    if (dart.library.io) 'file_cleanup_io.dart'
+    if (dart.library.html) 'file_cleanup_web.dart';
 
 /// Service for transcribing audio files using the OpenAI Whisper API.
 ///
@@ -15,9 +18,9 @@ class WhisperService {
 
   WhisperService(this.apiKey);
 
-  /// Transcribe an audio file using the Whisper API.
+  /// Transcribe audio using the Whisper API.
   ///
-  /// [audioFilePath]: Path to the audio file to transcribe.
+  /// [audioFilePath]: Path to audio file (native) or blob URL (web).
   /// [language]: Language code (default: 'en' for English).
   /// [prompt]: Optional prompt to improve accuracy for specific terminology.
   ///
@@ -29,19 +32,7 @@ class WhisperService {
     String language = 'en',
     String? prompt,
   }) async {
-    final audioFile = File(audioFilePath);
-
-    if (!await audioFile.exists()) {
-      throw WhisperException('Audio file not found: $audioFilePath');
-    }
-
-    // Check file size
-    final fileSize = await audioFile.length();
-    print('DEBUG: Audio file size: $fileSize bytes');
-
-    if (fileSize == 0) {
-      throw WhisperException('Audio file is empty (0 bytes). Recording may have failed.');
-    }
+    print('DEBUG: Transcribing audio from: $audioFilePath');
 
     final request = http.MultipartRequest('POST', Uri.parse(_baseUrl));
 
@@ -58,11 +49,38 @@ class WhisperService {
       request.fields['prompt'] = prompt;
     }
 
-    // Add audio file
-    request.files.add(await http.MultipartFile.fromPath(
-      'file',
-      audioFilePath,
-    ));
+    // Add audio file - different handling for web vs native
+    if (kIsWeb) {
+      // Web: Fetch the blob URL and send bytes
+      try {
+        final response = await http.get(Uri.parse(audioFilePath));
+        if (response.statusCode == 200) {
+          final bytes = response.bodyBytes;
+          print('DEBUG: Audio file size: ${bytes.length} bytes');
+
+          if (bytes.isEmpty) {
+            throw WhisperException('Audio recording is empty. Please try again.');
+          }
+
+          request.files.add(http.MultipartFile.fromBytes(
+            'file',
+            bytes,
+            filename: 'audio.wav',
+          ));
+        } else {
+          throw WhisperException('Failed to read audio data');
+        }
+      } catch (e) {
+        if (e is WhisperException) rethrow;
+        throw WhisperException('Failed to prepare audio for upload: $e');
+      }
+    } else {
+      // Native: Use file path directly
+      request.files.add(await http.MultipartFile.fromPath(
+        'file',
+        audioFilePath,
+      ));
+    }
 
     try {
       print('DEBUG: Sending audio file to Whisper API...');
@@ -85,12 +103,8 @@ class WhisperService {
         final jsonData = json.decode(response.body);
         final text = jsonData['text'] as String;
 
-        // Clean up temp file after successful transcription
-        try {
-          await audioFile.delete();
-        } catch (e) {
-          // Ignore cleanup errors
-        }
+        // Clean up temp file (no-op on web)
+        await deleteFileIfExists(audioFilePath);
 
         return text.trim();
       } else {
@@ -111,28 +125,17 @@ class WhisperService {
           errorMessage = 'Rate limit exceeded. Please try again in a moment.';
         }
 
-        // Clean up temp file even on error
-        try {
-          await audioFile.delete();
-        } catch (e) {
-          // Ignore cleanup errors
-        }
+        // Clean up temp file (no-op on web)
+        await deleteFileIfExists(audioFilePath);
 
         throw WhisperException(
           'API Error ${response.statusCode}: $errorMessage',
         );
       }
-    } on SocketException catch (e) {
-      // Clean up temp file on network error
-      try {
-        await audioFile.delete();
-      } catch (_) {}
-      throw WhisperException('Network error: ${e.message}');
     } catch (e) {
-      // Clean up temp file on any other error
-      try {
-        await audioFile.delete();
-      } catch (_) {}
+      // Clean up temp file (no-op on web)
+      await deleteFileIfExists(audioFilePath);
+
       if (e is WhisperException) {
         rethrow;
       }
