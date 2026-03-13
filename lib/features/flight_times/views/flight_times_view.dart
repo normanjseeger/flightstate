@@ -313,9 +313,14 @@ class FlightTimesView extends StatelessWidget {
     required double value,
     required ValueChanged<double> onChanged,
   }) {
+    // Use a TextEditingController to allow voice input to update the field
+    // while keeping focus during manual input
+    final controller = TextEditingController(
+      text: value == 0.0 ? '' : value.toString(),
+    );
+
     return TextFormField(
-      key: ValueKey('${label}_$value'),  // Force rebuild when value changes
-      initialValue: value == 0.0 ? '' : value.toString(),
+      controller: controller,
       decoration: InputDecoration(
         labelText: label,
         helperText: subtitle,
