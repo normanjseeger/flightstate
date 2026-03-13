@@ -1,10 +1,72 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'package:flightstate/features/settings/viewmodels/settings_viewmodel.dart';
 
-class SettingsView extends StatelessWidget {
+/// Test the OpenAI API key by making a simple request
+Future<Map<String, dynamic>> testWhisperApiKey(String apiKey) async {
+  try {
+    // Make a simple API call to verify the key
+    final response = await http.get(
+      Uri.parse('https://api.openai.com/v1/models'),
+      headers: {
+        'Authorization': 'Bearer $apiKey',
+      },
+    ).timeout(const Duration(seconds: 10));
+
+    if (response.statusCode == 200) {
+      return {
+        'success': true,
+        'message': '✅ API key is valid!\n\nYour OpenAI API key is working correctly. The Whisper API should be accessible.',
+      };
+    } else if (response.statusCode == 401) {
+      return {
+        'success': false,
+        'message': '❌ Invalid API key\n\nThe API key is not recognized by OpenAI. Please check that you copied it correctly.',
+      };
+    } else if (response.statusCode == 429) {
+      return {
+        'success': false,
+        'message': '⚠️ Rate limit exceeded\n\nYour API key is valid, but you\'ve hit the rate limit. Wait a moment and try again.',
+      };
+    } else {
+      final errorBody = json.decode(response.body);
+      return {
+        'success': false,
+        'message': '❌ API Error ${response.statusCode}\n\n${errorBody['error']?['message'] ?? 'Unknown error'}',
+      };
+    }
+  } catch (e) {
+    return {
+      'success': false,
+      'message': '❌ Connection failed\n\nError: $e\n\nCheck your internet connection.',
+    };
+  }
+}
+
+class SettingsView extends StatefulWidget {
   const SettingsView({super.key});
+
+  @override
+  State<SettingsView> createState() => _SettingsViewState();
+}
+
+class _SettingsViewState extends State<SettingsView> {
+  late final TextEditingController _apiKeyController;
+
+  @override
+  void initState() {
+    super.initState();
+    _apiKeyController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _apiKeyController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,6 +93,13 @@ class SettingsView extends StatelessWidget {
             _buildSectionHeader(context, 'Units', Icons.straighten),
             const SizedBox(height: 8),
             _buildUnitsCard(context, vm),
+
+            const SizedBox(height: 24),
+
+            // OpenAI API Key Section
+            _buildSectionHeader(context, 'Voice Input', Icons.mic),
+            const SizedBox(height: 8),
+            _buildApiKeyCard(context, vm),
 
             const SizedBox(height: 24),
 
@@ -75,6 +144,282 @@ class SettingsView extends StatelessWidget {
             const SizedBox(height: 32),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildApiKeyCard(BuildContext context, SettingsViewModel vm) {
+    final theme = Theme.of(context);
+
+    // Update controller text if it's empty and we have a saved key
+    if (_apiKeyController.text.isEmpty && vm.hasApiKey) {
+      _apiKeyController.text = vm.openaiApiKey!;
+    }
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.key, color: theme.colorScheme.primary, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  'OpenAI API Key',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.help_outline, size: 18),
+                  onPressed: () => _showApiKeyHelpDialog(context),
+                  tooltip: 'How to get API key',
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _apiKeyController,
+              obscureText: true,
+              decoration: InputDecoration(
+                labelText: 'API Key',
+                hintText: 'sk-...',
+                suffixIcon: vm.hasApiKey
+                    ? const Icon(Icons.check_circle, color: Colors.green)
+                    : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                TextButton(
+                  onPressed: vm.hasApiKey
+                      ? () {
+                          vm.clearOpenAiApiKey();
+                          _apiKeyController.clear();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('API key cleared'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        }
+                      : null,
+                  child: const Text('Clear'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    if (_apiKeyController.text.isNotEmpty) {
+                      vm.setOpenAiApiKey(_apiKeyController.text);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('API key saved securely'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    }
+                  },
+                  child: const Text('Save'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Test API Connection Button
+            if (vm.hasApiKey)
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => _testApiConnection(context, vm),
+                  icon: const Icon(Icons.check_circle_outline),
+                  label: const Text('Test API Connection'),
+                ),
+              ),
+            const SizedBox(height: 8),
+            // Workaround note for macOS
+            if (vm.hasApiKey)
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange[50],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange.shade200),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.info_outline, size: 18, color: Colors.orange[800]),
+                        const SizedBox(width: 8),
+                        Text(
+                          'macOS Development Note',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.orange[800],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Microphone permissions don\'t work in development mode on macOS. Voice input will work properly on iOS devices or in production builds.',
+                      style: TextStyle(fontSize: 12, color: Colors.orange[900]),
+                    ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.secondaryContainer.withAlpha(77),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    size: 18,
+                    color: theme.colorScheme.secondary,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Your API key is stored securely and never shared. Required for voice input transcription.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.secondary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _testApiConnection(BuildContext context, SettingsViewModel vm) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('Testing API connection...'),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      // Test with a very simple API call
+      final response = await testWhisperApiKey(vm.openaiApiKey!);
+
+      if (context.mounted) {
+        Navigator.pop(context); // Close loading dialog
+
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Row(
+              children: [
+                Icon(
+                  response['success'] ? Icons.check_circle : Icons.error,
+                  color: response['success'] ? Colors.green : Colors.red,
+                ),
+                const SizedBox(width: 8),
+                Text(response['success'] ? 'Success!' : 'Failed'),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Text(response['message']),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        Navigator.pop(context); // Close loading dialog
+
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.error, color: Colors.red),
+                SizedBox(width: 8),
+                Text('Error'),
+              ],
+            ),
+            content: Text('Error: $e'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+    }
+  }
+
+  void _showApiKeyHelpDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Get OpenAI API Key'),
+        content: const SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('1. Visit platform.openai.com'),
+              SizedBox(height: 8),
+              Text('2. Sign up or log in'),
+              SizedBox(height: 8),
+              Text('3. Navigate to API Keys section'),
+              SizedBox(height: 8),
+              Text('4. Click "Create new secret key"'),
+              SizedBox(height: 8),
+              Text('5. Copy the key and paste here'),
+              SizedBox(height: 16),
+              Text(
+                'Cost: ~\$0.36 per hour of voice input',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Your API key enables high-quality voice transcription using OpenAI Whisper API, the same technology that powers ChatGPT voice input.',
+                style: TextStyle(fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Got it'),
+          ),
+        ],
       ),
     );
   }

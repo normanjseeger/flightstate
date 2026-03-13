@@ -1,6 +1,6 @@
-# acf_perf
+# FlightState
 
-A new Flutter project.
+FlightState — Aircraft Flight Calculation Toolbox for GA pilots.
 
 ## Getting Started
 

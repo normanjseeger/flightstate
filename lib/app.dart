@@ -27,7 +27,16 @@ class _FlightStateAppState extends State<FlightStateApp> {
         ChangeNotifierProvider(create: (_) => SettingsViewModel()..loadSettings()),
         ChangeNotifierProvider(create: (_) => TakeoffViewModel()),
         ChangeNotifierProvider(create: (_) => LandingViewModel()),
-        ChangeNotifierProvider(create: (_) => FlightTimesViewModel()),
+        ChangeNotifierProxyProvider<SettingsViewModel, FlightTimesViewModel>(
+          create: (_) => FlightTimesViewModel(),
+          update: (context, settingsVm, flightTimesVm) {
+            // Inject API key whenever Settings changes
+            if (settingsVm.hasApiKey && flightTimesVm != null) {
+              flightTimesVm.setApiKey(settingsVm.openaiApiKey!);
+            }
+            return flightTimesVm!;
+          },
+        ),
       ],
       child: MaterialApp(
         title: 'FlightState',
