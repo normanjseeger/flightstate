@@ -685,20 +685,27 @@ class _VoiceInputDialogState extends State<_VoiceInputDialog> {
           });
         }
 
-        return AlertDialog(
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Icon animation with pulsing effect
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                child: Icon(
-                  vm.isRecording ? Icons.mic : Icons.cloud_upload,
-                  size: 64,
-                  color: vm.isRecording ? Colors.red : Colors.blue,
-                ),
-              ),
-              const SizedBox(height: 16),
+        // Position dialog in upper third and make it compact
+        return Align(
+          alignment: Alignment.topCenter,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 80),
+            child: Material(
+              type: MaterialType.transparency,
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 340),
+                child: AlertDialog(
+                  contentPadding: const EdgeInsets.all(16),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Compact icon
+                      Icon(
+                        vm.isRecording ? Icons.mic : Icons.cloud_upload,
+                        size: 40,
+                        color: vm.isRecording ? Colors.red : Colors.blue,
+                      ),
+                      const SizedBox(height: 8),
 
               // Audio level indicator (only when recording)
               if (vm.isRecording) ...[
@@ -734,50 +741,53 @@ class _VoiceInputDialogState extends State<_VoiceInputDialog> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 8),
               ],
 
               // Status text
               if (!vm.isRecording)
                 Text(
                   vm.isProcessing
-                      ? 'Transcribing with Whisper API...'
+                      ? 'Transcribing...'
                       : 'Ready',
-                  style: const TextStyle(fontSize: 18),
+                  style: const TextStyle(fontSize: 14),
                 ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
 
               // Transcription preview
               if (vm.currentTranscription.isNotEmpty) ...[
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
                     vm.currentTranscription,
-                    style: const TextStyle(fontSize: 14),
+                    style: const TextStyle(fontSize: 12),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
               ],
 
               // Error display
               if (vm.voiceError != null) ...[
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: Colors.red[50],
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
                     vm.voiceError!,
-                    style: TextStyle(color: Colors.red[900]),
+                    style: TextStyle(
+                      color: Colors.red[900],
+                      fontSize: 12,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
               ],
 
               // Loading indicator
@@ -824,6 +834,10 @@ class _VoiceInputDialogState extends State<_VoiceInputDialog> {
               ),
             ],
           ],
+                ),
+              ),
+            ),
+          ),
         );
       },
     );
