@@ -462,25 +462,44 @@ class VoiceCommandParser {
     double? vutEnd,
     TimeOfDay? blockOn,
   }) {
-    // Check for required fields based on mode
-    if (mode == InputMode.direct) {
-      if (hobbsDiff == null) {
-        return 'Total time value is required. Example: "Total time 3.5"';
-      }
-      if (vutDiff == null) {
-        return 'Tachometer time value is required. Example: "Tachometer time 2.75"';
-      }
-    } else {
-      if (hobbsStart == null || hobbsEnd == null) {
-        return 'Total time start and end values are required. Example: "Total time start 1234.5 end 1238.0"';
-      }
-      if (vutStart == null || vutEnd == null) {
-        return 'Tachometer time start and end values are required. Example: "Tachometer time start 890 end 893"';
-      }
+    // Flexible validation: require at least ONE field to be provided
+    // This allows partial voice input to fill only specific fields
+
+    bool hasAnyField = false;
+
+    // Check if any direct mode fields are provided
+    if (hobbsDiff != null || vutDiff != null) {
+      hasAnyField = true;
     }
 
-    if (blockOn == null) {
-      return 'Block on time is required. Example: "Block on time at 14:30"';
+    // Check if any readings mode fields are provided
+    if (hobbsStart != null || hobbsEnd != null || vutStart != null || vutEnd != null) {
+      hasAnyField = true;
+    }
+
+    // Check if block on time is provided
+    if (blockOn != null) {
+      hasAnyField = true;
+    }
+
+    // If no fields were recognized, return an error
+    if (!hasAnyField) {
+      return 'No fields recognized. Please dictate at least one field.\n\n'
+          'Examples:\n'
+          '• "Block on time 14:30"\n'
+          '• "Total time 3.5"\n'
+          '• "Tachometer time 2.75"\n'
+          '• "Total time start 8552.3 end 8552.8"';
+    }
+
+    // Validate paired fields in readings mode
+    // If start is provided, end should also be provided (and vice versa)
+    if ((hobbsStart != null && hobbsEnd == null) || (hobbsStart == null && hobbsEnd != null)) {
+      return 'Total time needs both start AND end values. Example: "Total time start 8552.3 end 8552.8"';
+    }
+
+    if ((vutStart != null && vutEnd == null) || (vutStart == null && vutEnd != null)) {
+      return 'Tachometer time needs both start AND end values. Example: "Tachometer time start 7234.5 end 7235.0"';
     }
 
     return null;
