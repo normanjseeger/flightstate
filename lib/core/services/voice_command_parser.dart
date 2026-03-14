@@ -210,8 +210,32 @@ class VoiceCommandParser {
 
   /// Normalize decimal formats
   String _normalizeDecimals(String text) {
+    var result = text;
+
+    // Handle digit-by-digit dictation for meter readings
+    // Example: "0 5 2 3 6 decimal 8" -> "5236.8"
+    // Example: "0 5 2 3 6 point 8" -> "5236.8"
+    // Pattern: sequence of individual digits, optionally followed by decimal/point and more digits
+    result = result.replaceAllMapped(
+      RegExp(r'(?:^|\s)((?:\d\s+)+\d)(?:\s+(?:decimal|point)\s+((?:\d\s*)+))?(?=\s|$)', caseSensitive: false),
+      (match) {
+        // Combine whole part digits
+        final wholePart = match.group(1)!.replaceAll(RegExp(r'\s+'), '');
+
+        // Combine decimal part digits if present
+        final decimalPart = match.group(2);
+        if (decimalPart != null) {
+          final decimal = decimalPart.replaceAll(RegExp(r'\s+'), '');
+          return '$wholePart.$decimal';
+        }
+
+        return wholePart;
+      },
+    );
+
     // Handle "point" for decimals - combine consecutive single digits after point
-    return text.replaceAllMapped(
+    // This handles cases like "3 point 5" -> "3.5"
+    result = result.replaceAllMapped(
       RegExp(r'(\d+)\s+point\s+((?:\d+\s*)+)'),
       (match) {
         final wholePart = match.group(1)!;
@@ -219,6 +243,8 @@ class VoiceCommandParser {
         return '$wholePart.$decimalPart';
       },
     );
+
+    return result;
   }
 
 
