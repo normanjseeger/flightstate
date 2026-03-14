@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flightstate/widgets/help_icon.dart';
 
 /// A slider with an editable text field that shows the current value.
 /// The slider operates on [value] (internal units), while the text field
@@ -25,6 +26,12 @@ class EditableSlider extends StatefulWidget {
   /// Fixed width for the text field + unit area. Ensures consistent alignment.
   final double fieldWidth;
 
+  /// Optional help text to show in a dialog when help icon is tapped
+  final String? helpText;
+
+  /// Optional route to detailed help page
+  final String? helpRoute;
+
   const EditableSlider({
     super.key,
     required this.icon,
@@ -40,6 +47,8 @@ class EditableSlider extends StatefulWidget {
     this.decimals = 1,
     this.displayToValue,
     this.fieldWidth = 120,
+    this.helpText,
+    this.helpRoute,
   });
 
   @override
@@ -135,6 +144,14 @@ class _EditableSliderState extends State<EditableSlider> {
                 ],
               ),
             ),
+            if (widget.helpText != null) ...[
+              const SizedBox(width: 4),
+              HelpIcon(
+                title: widget.label,
+                briefExplanation: widget.helpText!,
+                detailedRoute: widget.helpRoute,
+              ),
+            ],
             SizedBox(
               width: widget.fieldWidth,
               child: TextField(

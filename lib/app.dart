@@ -11,6 +11,7 @@ import 'package:flightstate/features/flight_times/views/flight_times_view.dart';
 import 'package:flightstate/features/flight_times/viewmodels/flight_times_viewmodel.dart';
 import 'package:flightstate/features/settings/viewmodels/settings_viewmodel.dart';
 import 'package:flightstate/features/settings/views/settings_view.dart';
+import 'package:flightstate/features/help/views/help_page.dart';
 
 class FlightStateApp extends StatefulWidget {
   const FlightStateApp({super.key});
@@ -306,6 +307,14 @@ class _MainScreenState extends State<_MainScreen> {
     );
   }
 
+  void _openHelp() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const HelpPage(),
+      ),
+    );
+  }
+
   Widget _buildPageContent() {
     switch (_selectedPage) {
       case AppPage.takeoff:
@@ -346,6 +355,11 @@ class _MainScreenState extends State<_MainScreen> {
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline, color: Colors.white70),
+            onPressed: _openHelp,
+            tooltip: 'Help & Reference',
+          ),
           IconButton(
             icon: const Icon(Icons.settings, color: Colors.white70),
             onPressed: _openSettings,

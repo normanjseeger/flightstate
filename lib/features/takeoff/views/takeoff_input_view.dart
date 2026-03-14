@@ -5,6 +5,7 @@ import 'package:flightstate/core/widgets/afm_remarks_panel.dart';
 import 'package:flightstate/core/widgets/editable_slider.dart';
 import 'package:flightstate/features/takeoff/viewmodels/takeoff_viewmodel.dart';
 import 'package:flightstate/features/settings/viewmodels/settings_viewmodel.dart';
+import 'package:flightstate/features/help/help_content.dart';
 
 class TakeoffInputView extends StatelessWidget {
   const TakeoffInputView({super.key});
@@ -352,6 +353,7 @@ class TakeoffInputView extends StatelessWidget {
               displayValue: vm.pressureAltitude,
               decimals: 0,
               onChanged: vm.setPressureAltitude,
+              helpText: HelpContent.pressureAltitudeBrief,
             ),
 
             const SizedBox(height: 16),
@@ -367,6 +369,7 @@ class TakeoffInputView extends StatelessWidget {
               unit: vm.massUnit(useImperial),
               displayValue: vm.displayMass(useImperial),
               displayToValue: useImperial ? (lbs) => lbsToKg(lbs) : null,
+              helpText: HelpContent.aircraftMassBrief,
               decimals: 0,
               onChanged: vm.setMass,
             ),
